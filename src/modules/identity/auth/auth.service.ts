@@ -12,7 +12,7 @@ import { googleUserResponse, oauth2Client } from './googleClient';
 import { checkOTP, checkRateLimits, createAndStoreOTP } from './otp-management';
 
 class AuthService {
-  constructor() { }
+  constructor() {}
 
   getUserByEmail = async (email: string) => {
     return await prisma.user.findFirst({
@@ -24,7 +24,11 @@ class AuthService {
     });
   };
 
-  generateTokens = async (user: { id: string; role: string }, req: Request, refreshTokenParams?: string) => {
+  generateTokens = async (
+    user: { id: string; role: string },
+    req: Request,
+    refreshTokenParams?: string,
+  ) => {
     const accessToken = jwt.sign({ id: user.id, role: user.role }, ACCESS_TOKEN_SECRET, {
       expiresIn: '15m',
     });

@@ -15,7 +15,7 @@ export const optionalAuth = asyncHandler((req: Request, res: Response, next: Nex
   }
 
   try {
-    const decoded = jwt.verify(token, ACCESS_TOKEN_SECRET) as {
+    const decoded = jwt.verify(token, String(ACCESS_TOKEN_SECRET)) as unknown as {
       id: string;
       role: string;
     };

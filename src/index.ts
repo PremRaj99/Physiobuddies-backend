@@ -1,7 +1,7 @@
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express from 'express';
-import path from 'path';
+// import path from 'path';
 import { router } from './app';
 import { NODE_ENV, PORT } from './core/constants';
 import { errorHandlerMiddleware } from './core/errors/errorHandler';
@@ -40,11 +40,11 @@ app.use(express.urlencoded({ limit: '100mb', extended: true }));
 app.use('/api/v1', router);
 app.use(errorHandlerMiddleware);
 
-app.use(express.static(path.join(__dirname, '../../client/dist')));
+// app.use(express.static(path.join(__dirname, '../../client/dist')));
 
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../../client', 'dist', 'index.html'));
-});
+// app.get('*', (req, res) => {
+//   res.sendFile(path.join(__dirname, '../../client', 'dist', 'index.html'));
+// });
 app.listen(PORT, () => {
   console.log(`API Gateway is running in ${NODE_ENV} environment at http://localhost:${PORT}`);
 });

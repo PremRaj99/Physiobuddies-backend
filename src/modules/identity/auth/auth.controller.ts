@@ -15,7 +15,7 @@ import { setCookie } from './setCookie';
 import { AcceptedResponse, CreatedResponse, OkResponse } from '@/core/response/ApiResponse';
 
 class AuthController {
-  login = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  login = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
     const parseData = validateSchema(LoginSchema, req.body);
 
     const { accessToken, refreshToken } = await authService.login(
@@ -30,7 +30,7 @@ class AuthController {
     res.json(new OkResponse({ accessToken, refreshToken }));
   });
 
-  sendEmailBeforeSignup = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  sendEmailBeforeSignup = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
     // Implement email verification before signup logic here using authService
     const parseData = validateSchema(SendEmailBeforeSignupSchema, req.body);
 
@@ -39,7 +39,7 @@ class AuthController {
     res.status(202).json(new AcceptedResponse('OTP sent to email.'));
   });
 
-  signupPatient = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  signupPatient = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
     // Implement signup logic here using authService
     const parseData = validateSchema(SignupPatientSchema, req.body);
 
@@ -54,7 +54,7 @@ class AuthController {
     res.status(201).json(new CreatedResponse('User registered successfully.'));
   });
 
-  signupPhysiotherapist = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  signupPhysiotherapist = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
     // Implement signup logic here using authService
     const parseData = validateSchema(SignupPhysiotherapistSchema, req.body);
 
@@ -73,7 +73,7 @@ class AuthController {
     res.status(201).json(new CreatedResponse('User registered successfully.'));
   });
 
-  google = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  google = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
     // Implement Google OAuth logic here using authService
     const { code } = req.query;
 
@@ -84,7 +84,7 @@ class AuthController {
     res.json(new OkResponse({ accessToken, refreshToken }));
   });
 
-  refreshToken = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  refreshToken = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
     // Implement refresh token logic here using authService
     const { accessToken, refreshToken } = await authService.refreshToken(req);
 
@@ -94,7 +94,7 @@ class AuthController {
     res.json(new OkResponse({ accessToken, refreshToken }));
   });
 
-  logout = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  logout = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
     // Implement logout logic here using authService
 
     res.clearCookie('access_token');
@@ -103,7 +103,7 @@ class AuthController {
     res.status(202).json(new AcceptedResponse('Logged out successfully.'));
   });
 
-  forgotPassword = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  forgotPassword = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
     // Implement forgot password logic here using authService
 
     const parseData = validateSchema(ForgotPasswordSchema, req.body);
@@ -113,7 +113,7 @@ class AuthController {
     res.status(202).json(new AcceptedResponse('Password reset OTP sent to email.'));
   });
 
-  verifyEmail = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  verifyEmail = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
     // Implement email verification logic here using authService
     const parseData = validateSchema(VerifyEmailSchema, req.body);
 
@@ -122,7 +122,7 @@ class AuthController {
     res.status(202).json(new AcceptedResponse('Email verified successfully.'));
   });
 
-  resetPassword = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  resetPassword = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
     // Implement reset password logic here using authService
 
     const parseData = validateSchema(ResetPasswordSchema, req.body);

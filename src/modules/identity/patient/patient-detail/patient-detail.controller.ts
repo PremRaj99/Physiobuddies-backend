@@ -9,7 +9,7 @@ import { AcceptedResponse, CreatedResponse, OkResponse } from '@/core/response/A
 
 class PatientDetailController {
   // Implement patient detail-specific endpoints here
-  createPatientDetail = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  createPatientDetail = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
     // Placeholder for create patient detail endpoint logic
     isAuth(req);
     const parseData = validateSchema(PatientDetailsSchema, req.body);
@@ -18,14 +18,14 @@ class PatientDetailController {
     res.status(201).json(new CreatedResponse('Patient detail created successfully'));
   });
 
-  getPatientDetails = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  getPatientDetails = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
     // Placeholder for get patient details endpoint logic
     isAuth(req);
     const patientDetails = await patientDetailService.getPatientDetails(req.user.id);
     res.json(new OkResponse(patientDetails));
   });
 
-  updatePatientDetail = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  updatePatientDetail = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
     // Placeholder for update patient detail endpoint logic
     const patientDetailId = validateSchema(ObjectIdSchema, req.params.id);
     isAuth(req);
@@ -34,7 +34,7 @@ class PatientDetailController {
     res.status(202).json(new AcceptedResponse('Patient detail updated successfully'));
   });
 
-  deletePatientDetail = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  deletePatientDetail = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
     // Placeholder for delete patient detail endpoint logic
     const patientDetailId = validateSchema(ObjectIdSchema, req.params.id);
     isAuth(req);

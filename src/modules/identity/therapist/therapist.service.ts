@@ -1,14 +1,12 @@
-import prisma from "@/config/prisma";
-import { convertISTRangeToUTC } from "@/core/utils/time-zone";
-import { addDays } from "date-fns";
-import z from "zod";
-import { calculateDistance } from "./calculateDistance";
-import { TherapistQuerySchema } from "./therapist.type";
+import prisma from '@/config/prisma';
+import { convertISTRangeToUTC } from '@/core/utils/time-zone';
+import { addDays } from 'date-fns';
+import z from 'zod';
+import { calculateDistance } from './calculateDistance';
+import { TherapistQuerySchema } from './therapist.type';
 
 class TherapistService {
-
   getAllTherapists = async (query: z.infer<typeof TherapistQuerySchema>) => {
-
     // default pagination values
     const limit = query.limit || 10;
     const page = query.page || 1;
@@ -17,8 +15,8 @@ class TherapistService {
     // Initial lightweight query to filter and sort by distance if needed
     const lightweightTherapists = await prisma.therapist.findMany({
       where: {
-        ...(query.specializations?.length && {
-          meta: { specializations: { hasSome: query.specializations } }
+        ...(query.specialization?.length && {
+          meta: { specialization: { hasSome: query.specialization } },
         }),
         ...(query.price?.length === 2 && {
           price: { gte: query.price[0], lte: query.price[1] },
@@ -34,23 +32,24 @@ class TherapistService {
         location: true,
         price: true,
         rating: true,
-        meta: { select: { experience: true } } // Needed if sorting by experience
-      }
+        meta: { select: { experience: true } }, // Needed if sorting by experience
+      },
     });
 
     // Calculate distance for each therapist and filter/sort if needed
-    let processed = lightweightTherapists.map(t => {
+    let processed = lightweightTherapists.map((t) => {
       const lat = Number((t.location as { lat: number })?.lat);
       const lng = Number((t.location as { lng: number })?.lng);
-      const distance = query.lng && query.lat && lat && lng
-        ? calculateDistance(query.lat, query.lng, lat, lng)
-        : null;
+      const distance =
+        query.lng && query.lat && lat && lng
+          ? calculateDistance(query.lat, query.lng, lat, lng)
+          : null;
 
       return { ...t, distance };
     });
 
     if (query.radius) {
-      processed = processed.filter(t => t.distance !== null && t.distance <= query.radius!);
+      processed = processed.filter((t) => t.distance !== null && t.distance <= query.radius!);
     }
 
     if (query.sort === 'distance') {
@@ -65,25 +64,25 @@ class TherapistService {
 
     // Paginate the results
     const paginatedItems = processed.slice(skip, skip + limit);
-    const paginatedIds = paginatedItems.map(t => t.id);
+    const paginatedIds = paginatedItems.map((t) => t.id);
 
     if (paginatedIds.length === 0) return [];
 
     // Fetch full therapist data for the paginated results
     const fullTherapists = await prisma.therapist.findMany({
       where: {
-        id: { in: paginatedIds }
+        id: { in: paginatedIds },
       },
       include: {
         user: { select: { name: true, image: true } },
         meta: { select: { experience: true, specialization: true } },
-        _count: { select: { reviewsReceived: true } }
-      }
+        _count: { select: { reviewsReceived: true } },
+      },
     });
 
     // Map the full data to the response format, ensuring the order matches the paginated items
-    return paginatedItems.map(item => {
-      const fullData = fullTherapists.find(t => t.id === item.id)!;
+    return paginatedItems.map((item) => {
+      const fullData = fullTherapists.find((t) => t.id === item.id)!;
 
       return {
         id: fullData.id,
@@ -99,7 +98,6 @@ class TherapistService {
         distance: item.distance,
       };
     });
-
   };
 
   getTherapistById = async (therapistId: string, location: { lat?: number; lng?: number }) => {
@@ -108,8 +106,8 @@ class TherapistService {
       include: {
         user: { select: { name: true, image: true } },
         meta: { select: { experience: true, specialization: true } },
-        _count: { select: { reviewsReceived: true } }
-      }
+        _count: { select: { reviewsReceived: true } },
+      },
     });
 
     if (!therapist) return null;
@@ -129,11 +127,17 @@ class TherapistService {
       displayAddress: therapist.displayAddress,
       image: therapist.user.image,
       about: therapist.about,
-      distance: location.lat && location.lng ? calculateDistance(location.lat, location.lng, lat, lng) : null
+      distance:
+        location.lat && location.lng
+          ? calculateDistance(location.lat, location.lng, lat, lng)
+          : null,
     };
   };
 
-  getTherapistReviews = async (therapistId: string, pagination: { page?: number; limit?: number }) => {
+  getTherapistReviews = async (
+    therapistId: string,
+    pagination: { page?: number; limit?: number },
+  ) => {
     const limit = pagination.limit || 10;
     const page = pagination.page || 1;
     const skip = (page - 1) * limit;
@@ -141,24 +145,38 @@ class TherapistService {
     const reviews = await prisma.therapistReview.findMany({
       where: { therapistId },
       include: {
-        patient: { select: { user: { select: { name: true, image: true } } } }
+        patient: { select: { user: { select: { name: true, image: true } } } },
       },
       orderBy: { createdAt: 'desc' },
       skip,
-      take: limit
+      take: limit,
     });
 
-    return reviews.map((r: any) => ({
-      rating: r.rating,
-      comment: r.comment,
-      createdAt: r.createdAt,
-      reviewerName: r.patient.user.name,
-      reviewerImage: r.patient.user.image
-    }));
+    return reviews.map(
+      (r: {
+        rating: number;
+        comment: string;
+        createdAt: Date;
+        patient: {
+          user: {
+            name: string;
+            image: string | null;
+          };
+        };
+      }) => ({
+        rating: r.rating,
+        comment: r.comment,
+        createdAt: r.createdAt,
+        reviewerName: r.patient.user.name,
+        reviewerImage: r.patient.user.image,
+      }),
+    );
   };
 
-  getTherapistArticles = async (therapistId: string, pagination: { page?: number; limit?: number }) => {
-
+  getTherapistArticles = async (
+    therapistId: string,
+    pagination: { page?: number; limit?: number },
+  ) => {
     const limit = pagination.limit || 10;
     const page = pagination.page || 1;
     const skip = (page - 1) * limit;
@@ -167,15 +185,14 @@ class TherapistService {
       where: { therapistId },
       orderBy: { createdAt: 'desc' },
       skip,
-      take: limit
+      take: limit,
     });
 
-    return articles.map((a: any) => ({
+    return articles.map((a: { title: string; content: string; createdAt: Date }) => ({
       title: a.title,
       content: a.content,
-      createdAt: a.createdAt
+      createdAt: a.createdAt,
     }));
-
   };
 
   getTherapistFaqs = async (therapistId: string, pagination: { page?: number; limit?: number }) => {
@@ -187,13 +204,13 @@ class TherapistService {
       where: { therapistId },
       orderBy: { createdAt: 'desc' },
       skip,
-      take: limit
+      take: limit,
     });
 
-    return faqs.map((f: any) => ({
+    return faqs.map((f: { question: string; answer: string; createdAt: Date }) => ({
       question: f.question,
       answer: f.answer,
-      createdAt: f.createdAt
+      createdAt: f.createdAt,
     }));
   };
 
@@ -201,12 +218,18 @@ class TherapistService {
     const now = new Date();
 
     // 1. Setup Time Range (3 days)
-    const { startUtc: todayStart, endUtc: threeDaysEnd } = convertISTRangeToUTC(now, addDays(now, 2));
+    const { startUtc: todayStart, endUtc: threeDaysEnd } = convertISTRangeToUTC(
+      now,
+      addDays(now, 2),
+    );
 
     // 2. Parallel Fetch
     const [therapistSlot, templates, reservations, leaves] = await Promise.all([
       prisma.therapistSlot.findFirst({ where: { therapistId } }),
-      prisma.timeSlotTemplate.findMany({ where: { isActive: true }, orderBy: { startTime: 'asc' } }),
+      prisma.timeSlotTemplate.findMany({
+        where: { isActive: true },
+        orderBy: { startTime: 'asc' },
+      }),
       prisma.slotReservation.findMany({
         where: {
           therapistId,
@@ -227,7 +250,10 @@ class TherapistService {
 
     // 3. Create a Map for Reservations: Key is "YYYY-MM-DD_templateId" -> Status
     const reservationMap = new Map(
-      reservations.map(r => [`${r.date.toISOString().split('T')[0]}_${r.timeSlotTemplateId}`, r.status])
+      reservations.map((r) => [
+        `${r.date.toISOString().split('T')[0]}_${r.timeSlotTemplateId}`,
+        r.status,
+      ]),
     );
 
     const availableDays = new Set(therapistSlot.availableDays);
@@ -235,17 +261,17 @@ class TherapistService {
 
     for (let i = 0; i < 3; i++) {
       const currentDay = addDays(todayStart, i);
-      const dateKey = currentDay.toISOString().split("T")[0]; // YYYY-MM-DD
+      const dateKey = currentDay.toISOString().split('T')[0]; // YYYY-MM-DD
 
       // Formatting for your specific output "DD-MM-YYYY"
       const [year, month, day] = dateKey.split('-');
       const formattedDate = `${day}-${month}-${year}`;
 
-      const weekday = currentDay.toLocaleDateString("en-US", { weekday: "short" }).toLowerCase();
+      const weekday = currentDay.toLocaleDateString('en-US', { weekday: 'short' }).toLowerCase();
 
       // Check Leave: Compare UTC dates directly (assuming DB stores leave dates as UTC start/end)
-      const isDayOnLeave = leaves.some(leave =>
-        currentDay >= leave.startDate && currentDay <= leave.endDate
+      const isDayOnLeave = leaves.some(
+        (leave) => currentDay >= leave.startDate && currentDay <= leave.endDate,
       );
 
       const daySlots = [];
@@ -264,7 +290,7 @@ class TherapistService {
           const bookingStatus = reservationMap.get(`${dateKey}_${template.id}`);
 
           // Map status: if found, use DB status; otherwise, it's "open"
-          const status = bookingStatus ? bookingStatus.toLowerCase() : "open";
+          const status = bookingStatus ? bookingStatus.toLowerCase() : 'open';
 
           daySlots.push({
             templateId: template.id,

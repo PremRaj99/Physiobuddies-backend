@@ -1,6 +1,3 @@
-
-class FileUploadService {
-  
-}
+class FileUploadService {}
 
 export const fileUploadService = new FileUploadService();

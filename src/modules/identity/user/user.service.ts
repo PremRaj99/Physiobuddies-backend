@@ -33,7 +33,7 @@ class UserService {
     const user = await this.getUserById(userId);
 
     await prisma.user.update({
-      where: { id: userId },
+      where: { id: user.id },
       data: {
         name: data.name,
         phone: data.mobile,
@@ -45,7 +45,7 @@ class UserService {
     const user = await this.getUserById(userId);
 
     await prisma.user.update({
-      where: { id: userId },
+      where: { id: user.id },
       data: {
         image: data.avatar,
       },
@@ -66,7 +66,7 @@ class UserService {
     const hashedPassword = await bcrypt.hash(data.newPassword, 10);
 
     await prisma.user.update({
-      where: { id: userId },
+      where: { id: user.id },
       data: {
         password: hashedPassword,
       },

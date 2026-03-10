@@ -23,12 +23,12 @@ router.use('/user', userRouter);
 router.use('/patient', patientRouter);
 router.use('/therapist', therapistRouter);
 
-router.use("/admin", verifyJWT, AdminOnly, adminRouter)
-router.use("/appointment", verifyJWT, appointmentRouter)
-router.use("/blog", blogRouter)
-router.use("/contact", contactRouter)
-router.use("/coupon", verifyJWT, couponRouter)
-router.use("/file-upload", verifyJWT, fileUploadRouter)
-router.use("/notification", verifyJWT, notificationRouter)
-router.use("/payment", verifyJWT, paymentRouter)
-router.use("/therapist-registration", therapistRegistrationRouter)
+router.use('/admin', verifyJWT, AdminOnly, adminRouter);
+router.use('/appointment', verifyJWT, appointmentRouter);
+router.use('/blog', blogRouter);
+router.use('/contact', contactRouter);
+router.use('/coupon', verifyJWT, couponRouter);
+router.use('/file-upload', verifyJWT, fileUploadRouter);
+router.use('/notification', verifyJWT, notificationRouter);
+router.use('/payment', verifyJWT, paymentRouter);
+router.use('/therapist-registration', therapistRegistrationRouter);

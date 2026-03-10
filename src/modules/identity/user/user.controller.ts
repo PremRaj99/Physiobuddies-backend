@@ -7,7 +7,7 @@ import { validateSchema } from '@/core/utils/validateSchema';
 import { ChangePasswordSchema, UpdateAvatarSchema, UpdateUserSchema } from './user.type';
 
 class UserController {
-  getInfo = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  getInfo = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
     // Implementation for getting user information
     isAuth(req);
 
@@ -15,7 +15,7 @@ class UserController {
     res.json(new OkResponse(user));
   });
 
-  updateInfo = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  updateInfo = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
     // Implementation for updating user information
     isAuth(req);
 
@@ -25,7 +25,7 @@ class UserController {
     res.status(202).json(new AcceptedResponse('User information updated successfully'));
   });
 
-  updateAvatar = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  updateAvatar = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
     // Implementation for updating user avatar
 
     isAuth(req);
@@ -35,7 +35,7 @@ class UserController {
     res.status(202).json(new AcceptedResponse('User avatar updated successfully'));
   });
 
-  changePassword = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  changePassword = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
     // Implementation for changing user password
 
     isAuth(req);

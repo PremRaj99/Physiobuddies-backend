@@ -1,17 +1,15 @@
-
 class therapistArticleService {
-    async createArticle(data: any) {
-        // Logic to create a new article
-    }
+  async createArticle(_data: unknown) {
+    // Logic to create a new article
+  }
 
-    async updateArticle(id: string, data: any) {
-        // Logic to update an existing article by id
-    }
+  async updateArticle(_id: string, _data: unknown) {
+    // Logic to update an existing article by id
+  }
 
-    async deleteArticle(id: string) {
-        // Logic to delete an article by id
-    }
-
+  async deleteArticle(_id: string) {
+    // Logic to delete an article by id
+  }
 }
 
 export default new therapistArticleService();

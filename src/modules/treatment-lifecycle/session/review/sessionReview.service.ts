@@ -1,12 +1,11 @@
-
 class SessionReviewService {
-    async submitReview(sessionId: string, reviewData: any) {
-        // Logic to submit a review for a session
-    }
+  async submitReview(_sessionId: string, _reviewData: unknown) {
+    // Logic to submit a review for a session
+  }
 
-    async getReviews(sessionId: string) {
-        // Logic to get reviews for a session
-    }
+  async getReviews(_sessionId: string) {
+    // Logic to get reviews for a session
+  }
 }
 
 export default new SessionReviewService();

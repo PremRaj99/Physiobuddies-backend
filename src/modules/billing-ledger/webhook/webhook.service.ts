@@ -1,5 +1,3 @@
-class WebhookService {
-  
-}
+class WebhookService {}
 
-export default new WebhookService()
+export default new WebhookService();

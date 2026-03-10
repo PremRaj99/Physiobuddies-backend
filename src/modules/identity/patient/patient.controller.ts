@@ -6,7 +6,7 @@ import { patientService } from './patient.service';
 
 class PatientController {
   // Implement patient-specific endpoints here
-  patientInfo = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  patientInfo = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
     // Placeholder for patient info endpoint logic
     isAuth(req);
     const patientInfo = await patientService.patientInfo(req.user.id);
