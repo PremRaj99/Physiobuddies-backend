@@ -1,0 +1,43 @@
+name: Remote Deployment
+
+on:
+  push:
+    branches:
+      - main # Trigger only when you push build files to main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Execute Remote SSH Commands
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          script: |
+            # 1. Navigate to project
+            cd ~/Physiobuddies
+
+            # 2. Pull latest build files
+            git pull origin main
+
+            # 3. Handle dependencies (Only if package.json changed)
+            # This is faster than running it every time
+            npm ci --omit=dev
+
+            # 4. Handle Database (Prisma)
+            # We generate inside the prisma folder as per your structure
+            if [ -d "prisma" ]; then
+              npx prisma generate
+            fi
+
+            # 5. Restart services
+            pm2 restart physiobuddies
+
+            echo "Deployment Successful!"
