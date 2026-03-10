@@ -15,5 +15,9 @@
     },
     "types": ["node", "express"]
   },
+  "ts-node": {
+    "files": true
+  },
+  "include": ["src/**/*.ts", "src/**/*.d.ts"],
   "exclude": ["node_modules", "dist", "prisma.config.ts", "eslint.config.ts"]
 }
