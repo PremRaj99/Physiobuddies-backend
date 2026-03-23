@@ -2,29 +2,31 @@ import { asyncHandler } from '@/core/response/responseHandler';
 import sessionService from './session.service';
 import { Request, Response, NextFunction } from 'express';
 import { AcceptedResponse } from '@/core/response/ApiResponse';
+import { validateSchema } from '@/core/utils/validateSchema';
+import { ObjectIdSchema } from '@/modules/identity/auth/auth.type';
 
 class SessionController {
   startSession = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
-    const sessionId = req.params.id;
+    const sessionId = validateSchema(ObjectIdSchema, req.params.id);
     await sessionService.startSession(sessionId);
-    res.json(new AcceptedResponse());
+    return new AcceptedResponse('Session started successfully').send(res);
   });
   completeSession = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
-    const sessionId = req.params.id;
+    const sessionId = validateSchema(ObjectIdSchema, req.params.id);
     await sessionService.completeSession(sessionId);
-    res.json(new AcceptedResponse());
+    return new AcceptedResponse('Session completed successfully').send(res);
   });
 
   markNoShow = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
-    const sessionId = req.params.id;
+    const sessionId = validateSchema(ObjectIdSchema, req.params.id);
     await sessionService.markNoShow(sessionId);
-    res.json(new AcceptedResponse());
+    return new AcceptedResponse('Session marked as no-show successfully').send(res);
   });
 
   cancelSession = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
-    const sessionId = req.params.id;
+    const sessionId = validateSchema(ObjectIdSchema, req.params.id);
     await sessionService.cancelSession(sessionId);
-    res.json(new AcceptedResponse());
+    return new AcceptedResponse('Session canceled successfully').send(res);
   });
 }
 

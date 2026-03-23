@@ -4,8 +4,17 @@ import { addDays } from 'date-fns';
 import z from 'zod';
 import { calculateDistance } from './calculateDistance';
 import { TherapistQuerySchema } from './therapist.type';
+import { NotFoundError } from '@/core/errors/ApiError';
 
 class TherapistService {
+  getTherapistByUserId = async (userId: string) => {
+    const therapist = await prisma.therapist.findUnique({
+      where: { userId, deletedAt: null },
+    });
+    if (!therapist) throw new NotFoundError('Therapist not found');
+    return therapist;
+  };
+
   getAllTherapists = async (query: z.infer<typeof TherapistQuerySchema>) => {
     // default pagination values
     const limit = query.limit || 10;
@@ -102,7 +111,7 @@ class TherapistService {
 
   getTherapistById = async (therapistId: string, location: { lat?: number; lng?: number }) => {
     const therapist = await prisma.therapist.findUnique({
-      where: { id: therapistId },
+      where: { id: therapistId, deletedAt: null },
       include: {
         user: { select: { name: true, image: true } },
         meta: { select: { experience: true, specialization: true } },
@@ -110,7 +119,7 @@ class TherapistService {
       },
     });
 
-    if (!therapist) return null;
+    if (!therapist) throw new NotFoundError('Therapist not found');
 
     const lat = Number((therapist.location as { lat: number })?.lat);
     const lng = Number((therapist.location as { lng: number })?.lng);

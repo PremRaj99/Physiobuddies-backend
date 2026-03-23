@@ -29,18 +29,22 @@ class AuthService {
     req: Request,
     refreshTokenParams?: string,
   ) => {
-    const accessToken = jwt.sign({ id: user.id, role: user.role }, ACCESS_TOKEN_SECRET, {
+    const accessToken = jwt.sign({ id: user.id, role: user.role }, ACCESS_TOKEN_SECRET as string, {
       expiresIn: '15m',
     });
 
-    const refreshToken = jwt.sign({ id: user.id, role: user.role }, REFRESH_TOKEN_SECRET, {
-      expiresIn: '7d',
-    });
+    const refreshToken = jwt.sign(
+      { id: user.id, role: user.role },
+      REFRESH_TOKEN_SECRET as string,
+      {
+        expiresIn: '7d',
+      },
+    );
 
     const geo = await geoip.lookup(req.ip || '');
 
     if (refreshTokenParams) {
-      await prisma.session.update({
+      await prisma.authSession.update({
         where: {
           refreshToken: refreshTokenParams,
         },
@@ -54,7 +58,7 @@ class AuthService {
         },
       });
     } else {
-      await prisma.session.create({
+      await prisma.authSession.create({
         data: {
           userId: user.id,
           refreshToken: refreshToken,
@@ -206,6 +210,7 @@ class AuthService {
         mode,
         price: THERAPIST_PRICE,
         therapistId: generateTherapistId(),
+        commissionRate: 0.2, // 20% commission
       },
     });
   };
@@ -237,7 +242,7 @@ class AuthService {
       throw new ValidationError('Refresh token not provided');
     }
 
-    const session = await prisma.session.findUnique({
+    const session = await prisma.authSession.findUnique({
       where: {
         refreshToken: refreshToken,
       },
@@ -262,7 +267,7 @@ class AuthService {
       throw new ValidationError('Refresh token not provided');
     }
 
-    await prisma.session.delete({
+    await prisma.authSession.delete({
       where: {
         refreshToken: refreshToken,
       },

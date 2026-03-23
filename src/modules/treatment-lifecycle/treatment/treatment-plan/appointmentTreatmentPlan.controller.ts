@@ -6,22 +6,25 @@ import { AcceptedResponse } from '@/core/response/ApiResponse';
 class AppointmentTreatmentPlanController {
   createOrUpdateTreatmentPlan = asyncHandler(
     async (req: Request, res: Response, _next: NextFunction) => {
-      const appointmentId = req.params.id;
+      const treatmentPlanId = req.params.id;
       const treatmentPlanData = req.body;
       await appointmentTreatmentPlanService.createOrUpdateTreatmentPlan(
-        appointmentId,
+        treatmentPlanId as string,
         treatmentPlanData,
       );
-      res.json(new AcceptedResponse());
+      return new AcceptedResponse('Treatment plan created or updated successfully').send(res);
     },
   );
 
   addSessionToTreatmentPlan = asyncHandler(
     async (req: Request, res: Response, _next: NextFunction) => {
-      const appointmentId = req.params.id;
+      const treatmentPlanId = req.params.id;
       const { sessionId } = req.body;
-      await appointmentTreatmentPlanService.addSessionToTreatmentPlan(appointmentId, sessionId);
-      res.json(new AcceptedResponse());
+      await appointmentTreatmentPlanService.addSessionToTreatmentPlan(
+        treatmentPlanId as string,
+        sessionId,
+      );
+      return new AcceptedResponse('Session added to treatment plan successfully').send(res);
     },
   );
 }

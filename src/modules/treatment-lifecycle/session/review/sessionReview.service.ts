@@ -5,6 +5,7 @@ class SessionReviewService {
 
   async getReviews(_sessionId: string) {
     // Logic to get reviews for a session
+    return [];
   }
 }
 

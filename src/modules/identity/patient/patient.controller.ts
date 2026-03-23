@@ -10,7 +10,7 @@ class PatientController {
     // Placeholder for patient info endpoint logic
     isAuth(req);
     const patientInfo = await patientService.patientInfo(req.user.id);
-    res.json(new OkResponse(patientInfo));
+    return new OkResponse(patientInfo).send(res);
   });
 }
 

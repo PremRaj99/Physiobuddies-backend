@@ -16,14 +16,14 @@ class PatientLocationController {
 
     await patientLocationService.createPatientLocation(req.user.id, parseData);
 
-    res.status(201).json(new CreatedResponse('Patient location created successfully'));
+    return new CreatedResponse('Patient location created successfully').send(res);
   });
 
   getPatientLocations = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
     // Placeholder for get patient location endpoint logic
     isAuth(req);
     const patientLocations = await patientLocationService.getPatientLocations(req.user.id);
-    res.json(new OkResponse(patientLocations));
+    return new OkResponse(patientLocations).send(res);
   });
 
   updatePatientLocation = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
@@ -33,7 +33,7 @@ class PatientLocationController {
     const locationId = validateSchema(ObjectIdSchema, req.params.id);
 
     await patientLocationService.updatePatientLocation(locationId, req.user.id, parseData);
-    res.json(new AcceptedResponse('Patient location updated successfully'));
+    return new AcceptedResponse('Patient location updated successfully').send(res);
   });
 
   deletePatientLocation = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
@@ -41,7 +41,7 @@ class PatientLocationController {
     isAuth(req);
     const locationId = validateSchema(ObjectIdSchema, req.params.id);
     await patientLocationService.deletePatientLocation(locationId, req.user.id);
-    res.json(new AcceptedResponse('Patient location deleted successfully'));
+    return new AcceptedResponse('Patient location deleted successfully').send(res);
   });
 }
 

@@ -70,7 +70,7 @@ class PatientService {
             postalCode: true,
           },
         },
-        appointments: {
+        treatmentPlans: {
           orderBy: { updatedAt: 'desc' },
           take: 2,
           select: {
@@ -134,10 +134,10 @@ class PatientService {
       id: patient.id,
       user: patient.user,
       details: patient.details,
-      appointments: patient.appointments.map((appointment) => ({
-        id: appointment.id,
-        status: appointment.status,
-        sessions: appointment.sessions.map((session) => ({
+      treatmentPlans: patient.treatmentPlans.map((treatmentPlan) => ({
+        id: treatmentPlan.id,
+        status: treatmentPlan.status,
+        sessions: treatmentPlan.sessions.map((session) => ({
           date: session.reservation?.date,
           startTime: session.reservation.startTime,
           endTime: session.reservation.endTime,

@@ -85,7 +85,7 @@ enum WalletType {
   hold
 }
 
-enum AppointmentStatus {
+enum TreatmentPlanStatus {
   created
   treatment_planned
   ongoing
@@ -117,7 +117,6 @@ enum CouponAssignmentType {
 }
 
 enum ReservationStatus {
-  hold
   booked
   blocked
 }
@@ -155,7 +154,7 @@ model User {
   deletedAt DateTime?
 
   // Auth Sessions
-  authSessions Session[]
+  authSessions AuthSession[]
 
   // Profiles (1:1 Relationships)
   patientProfile   Patient?
@@ -176,7 +175,7 @@ model User {
   @@index([phone])
 }
 
-model Session {
+model AuthSession {
   id           String    @id @default(auto()) @map("_id") @db.ObjectId
   userId       String    @db.ObjectId
   agent        String
@@ -209,7 +208,7 @@ model Patient {
 
   details           PatientDetail[]
   locations         PatientLocation[]
-  appointments      Appointment[]      @relation("PatientAppointments")
+  treatmentPlans    TreatmentPlan[]    @relation("PatientTreatmentPlans")
   reviewsGiven      TherapistReview[]  @relation("PatientGivenReviews")
   couponUsages      CouponUsage[]
   couponAssignments CouponAssignment[]
@@ -239,7 +238,7 @@ model PatientDetail {
 model PatientReview {
   id            String @id @default(auto()) @map("_id") @db.ObjectId
   therapistId   String @db.ObjectId
-  appointmentId String @db.ObjectId
+  treatmentPlanId String @db.ObjectId
 
   comment String
   rating  Float
@@ -313,6 +312,9 @@ model Therapist {
   displayAddress String
   price          Float
   priceAlt       Float?
+  commissionRate Float
+  updateCommissionRateAt DateTime?
+
   rating         Float?
 
   gender Gender
@@ -330,7 +332,7 @@ model Therapist {
   meta             TherapistMeta?
   locations        TherapistLocation[]
   accounts         AccountDetail[]
-  appointments     Appointment[]       @relation("TherapistAppointments")
+  treatmentPlans    TreatmentPlan[]    @relation("TherapistTreatmentPlans")
   commissions      Commission[]
   walletEntries    TherapistWallet[]
   payouts          Payout[]
@@ -421,30 +423,30 @@ model TherapistFAQ {
 }
 
 // ----------------------------------------------------------------------
-// APPOINTMENTS & SESSIONS
+// TREATMENT PLANS & SESSIONS
 // ----------------------------------------------------------------------
 
-model Appointment {
+model TreatmentPlan {
   id              String @id @default(auto()) @map("_id") @db.ObjectId
   patientId       String @db.ObjectId
   therapistId     String @db.ObjectId
   locationId      String @db.ObjectId
   patientDetailId String @db.ObjectId
 
-  status                 AppointmentStatus
+  status                 TreatmentPlanStatus
   suggestedTreatmentDays Int?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Redundant fields for easier querying and reporting
-  patientDetailsSnapshot String // Store patient details at time of booking for reporting
-  locationSnapshot       String // Store location details at time of booking for reporting
-  therapistSnapshot      String // Store therapist details at time of booking for reporting
+  patientDetailsSnapshot Json // Store patient details at time of booking for reporting
+  locationSnapshot       Json // Store location details at time of booking for reporting
+  therapistSnapshot      Json // Store therapist details at time of booking for reporting
 
   // Relations
-  patient   Patient            @relation("PatientAppointments", fields: [patientId], references: [id])
-  therapist Therapist          @relation("TherapistAppointments", fields: [therapistId], references: [id])
+  patient   Patient            @relation("PatientTreatmentPlans", fields: [patientId], references: [id])
+  therapist Therapist          @relation("TherapistTreatmentPlans", fields: [therapistId], references: [id])
   sessions  TreatmentSession[]
 
   @@index([patientId])
@@ -453,52 +455,43 @@ model Appointment {
 
 model TreatmentSession {
   id            String @id @default(auto()) @map("_id") @db.ObjectId
-  appointmentId String @db.ObjectId
+  treatmentPlanId String @db.ObjectId
   reservationId String @unique @db.ObjectId
 
   date           DateTime
   status         SessionStatus
-  stateUpdatedAt DateTime      @default(now())
   mode           TreatmentMode
 
   // Fraud Prevention & Logistics
-  otpVerifiedAt DateTime?
-  otpLocation   Json?
+  startAt   DateTime?
 
   cancelledBy        ReviewedBy?
-  cancelledByIP      String?
   cancelledAt        DateTime?
   cancellationReason String?
 
-  startAt   DateTime?
-  startByIP String?
 
   endAt   DateTime?
-  endByIP String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // add redundant fields for easier querying and reporting
-  therapistName           String
-  therapistIdSnapshot     String
-  patientName             String
-  patientDetailIdSnapshot String
+  therapistSnapshot     Json
+  patientDetailSnapshot Json
   priceAtBooking          Float
-  locationSnapshot        String
-  addressSnapshot         String
+  addressSnapshot         Json?
 
   // Relations
-  appointment Appointment             @relation(fields: [appointmentId], references: [id])
+  treatmentPlan TreatmentPlan             @relation(fields: [treatmentPlanId], references: [id])
   bill        TreatmentSessionBill?
   review      TreatmentSessionReview?
   couponUsage CouponUsage?
 
   // Linked Reservation (Which slot was used)
   reservation              SlotReservation @relation(fields: [reservationId], references: [id])
-  treatmentSessionReviewId String          @db.ObjectId
+  treatmentSessionReviewId String?          @db.ObjectId
 
-  @@index([appointmentId])
+  @@index([treatmentPlanId])
 }
 
 // ----------------------------------------------------------------------
@@ -583,10 +576,11 @@ model SlotReservation {
 model Payment {
   id     String @id @default(auto()) @map("_id") @db.ObjectId
   userId String @db.ObjectId
+  invoiceId String @unique
 
-  gatewayPaymentId String
-  gatewayOrderId   String
-  webhookEventId   String  @unique
+  gatewayPaymentId String?
+  gatewayOrderId   String?
+  webhookEventId   String?  @unique
   processing       Boolean @default(false)
 
   status PaymentStatus
@@ -601,7 +595,7 @@ model Payment {
   updatedAt DateTime @updatedAt
 
   // Subscription logic
-  purpose        PaymentPurpose
+  purpose        PaymentPurpose @default(therapy_session)
   subscriptionId String?        @db.ObjectId
 
   // Relations
@@ -627,7 +621,7 @@ model TreatmentSessionBill {
   releasedAt      DateTime?
 
   // Redundant fields for easier querying and reporting
-  paymentAmountMetaData String // Store original payment amount as string for reporting, since payments can be split or adjusted
+  paymentAmountMetaData Json // Store original payment amount as string for reporting, since payments can be split or adjusted
 
   // Relations
   payment    Payment          @relation(fields: [paymentId], references: [id])
@@ -687,7 +681,7 @@ model Payout {
   processedBy         String?
   processedAt         DateTime?
   requestedFromIp     String?
-  accountSnapshotJson String? // Store account details at time of payout for record
+  accountSnapshotJson Json? // Store account details at time of payout for record
 
   createdAt DateTime @default(now())
 
@@ -852,7 +846,7 @@ model TherapistReview {
   id            String @id @default(auto()) @map("_id") @db.ObjectId
   patientId     String @db.ObjectId
   therapistId   String @db.ObjectId
-  appointmentId String @db.ObjectId
+  treatmentPlanId String @db.ObjectId
 
   rating  Float
   comment String

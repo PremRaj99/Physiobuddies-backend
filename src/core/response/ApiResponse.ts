@@ -1,3 +1,4 @@
+import { Response } from 'express';
 export class ApiResponse {
   statusCode: number;
   data: object | Array<object> | null;
@@ -9,6 +10,14 @@ export class ApiResponse {
     this.data = data;
     this.message = message;
     this.success = statusCode < 400;
+  }
+
+  send(res: Response) {
+    return res.status(this.statusCode).json({
+      success: this.success,
+      message: this.message,
+      data: this.data,
+    });
   }
 }
 

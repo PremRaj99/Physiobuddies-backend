@@ -12,7 +12,7 @@ class UserController {
     isAuth(req);
 
     const user = await userService.getInfo(req.user.id);
-    res.json(new OkResponse(user));
+    return new OkResponse(user).send(res);
   });
 
   updateInfo = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
@@ -22,7 +22,7 @@ class UserController {
     const parseData = validateSchema(UpdateUserSchema, req.body);
 
     await userService.updateInfo(req.user.id, parseData);
-    res.status(202).json(new AcceptedResponse('User information updated successfully'));
+    return new AcceptedResponse('User information updated successfully').send(res);
   });
 
   updateAvatar = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
@@ -32,7 +32,7 @@ class UserController {
 
     const parseData = validateSchema(UpdateAvatarSchema, req.body);
     await userService.updateAvatar(req.user.id, parseData);
-    res.status(202).json(new AcceptedResponse('User avatar updated successfully'));
+    return new AcceptedResponse('User avatar updated successfully').send(res);
   });
 
   changePassword = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
@@ -42,7 +42,7 @@ class UserController {
 
     const parseData = validateSchema(ChangePasswordSchema, req.body);
     await userService.changePassword(req.user.id, parseData);
-    res.status(202).json(new AcceptedResponse('User password changed successfully'));
+    return new AcceptedResponse('User password changed successfully').send(res);
   });
 }
 

@@ -1,13 +1,27 @@
+import prisma from '@/config/prisma';
+import { NotFoundError } from '@/core/errors/ApiError';
 class InvoiceService {
   getInvoiceById = async (invoiceId: string) => {
-    // Logic to retrieve invoice details by ID from the database
-    // This is a placeholder implementation and should be replaced with actual database logic
-    return {
-      id: invoiceId,
-      amount: 100.0,
-      status: 'Paid',
-      date: '2024-06-01',
-    };
+    const payment = await prisma.payment.findUnique({
+      where: { invoiceId },
+      include: {
+        bills: true,
+        subscription: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+          },
+        },
+      },
+    });
+
+    if (!payment) {
+      throw new NotFoundError('Invoice not found');
+    }
+    return payment;
   };
 }
 

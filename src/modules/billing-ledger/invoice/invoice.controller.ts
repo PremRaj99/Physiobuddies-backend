@@ -2,13 +2,14 @@ import { OkResponse } from '@/core/response/ApiResponse';
 import { asyncHandler } from '@/core/response/responseHandler';
 import { Request, Response, NextFunction } from 'express';
 import invoiceService from './invoice.service';
+import { validateSchema } from '@/core/utils/validateSchema';
+import { ObjectIdSchema } from '@/modules/identity/auth/auth.type';
 
 class InvoiceController {
   getInvoiceById = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
-    const invoiceId = req.params.id;
-    // Logic to get invoice details by ID
+    const invoiceId = validateSchema(ObjectIdSchema, req.params.id);
     const invoiceDetails = await invoiceService.getInvoiceById(invoiceId);
-    res.json(new OkResponse(invoiceDetails));
+    return new OkResponse(invoiceDetails).send(res);
   });
 }
 

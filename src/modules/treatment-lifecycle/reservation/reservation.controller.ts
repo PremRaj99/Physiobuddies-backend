@@ -1,7 +1,9 @@
-import { AcceptedResponse } from '@/core/response/ApiResponse';
+import { AcceptedResponse, OkResponse } from '@/core/response/ApiResponse';
 import { asyncHandler } from '@/core/response/responseHandler';
 import { Request, Response, NextFunction } from 'express';
 import reservationService from './reservation.service';
+import { validateSchema } from '@/core/utils/validateSchema';
+import { ObjectIdSchema } from '@/modules/identity/auth/auth.type';
 
 class ReservationController {
   // Implement reservation-related request handling here
@@ -9,19 +11,19 @@ class ReservationController {
     // Logic to hold a reservation
     const reservationData = req.body;
     await reservationService.holdReservation(reservationData);
-    res.status(202).json(new AcceptedResponse('Reservation held successfully'));
+    return new AcceptedResponse('Reservation held successfully').send(res);
   });
   getReservationById = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
-    const reservationId = req.params.id;
+    const reservationId = validateSchema(ObjectIdSchema, req.params.id);
     // Logic to get reservation details by ID
     const reservationDetails = await reservationService.getReservationById(reservationId);
-    res.status(200).json(reservationDetails);
+    return new OkResponse(reservationDetails).send(res);
   });
   cancelReservation = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
-    const reservationId = req.params.id;
+    const reservationId = validateSchema(ObjectIdSchema, req.params.id);
     // Logic to cancel a reservation
-    const cancellationResult = await reservationService.cancelReservation(reservationId);
-    res.status(200).json(cancellationResult);
+    await reservationService.cancelReservation(reservationId);
+    return new AcceptedResponse('Reservation canceled successfully').send(res);
   });
 }
 

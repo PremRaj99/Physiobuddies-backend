@@ -10,7 +10,7 @@ class TherapistController {
     const query = validateSchema(TherapistQuerySchema, req.query);
     const therapists = await therapistService.getAllTherapists(query);
 
-    res.json(new OkResponse(therapists));
+    return new OkResponse(therapists).send(res);
   }
 
   async getTherapistById(req: Request, res: Response, _next: NextFunction) {
@@ -23,7 +23,7 @@ class TherapistController {
 
     const therapist = await therapistService.getTherapistById(therapistId, location);
 
-    res.json(new OkResponse(therapist));
+    return new OkResponse(therapist).send(res);
   }
 
   async getTherapistReviews(req: Request, res: Response, _next: NextFunction) {
@@ -31,7 +31,7 @@ class TherapistController {
     const { page, limit } = validateSchema(TherapistQuerySchema, req.query);
     const reviews = await therapistService.getTherapistReviews(therapistId, { page, limit });
 
-    res.json(new OkResponse(reviews));
+    return new OkResponse(reviews).send(res);
   }
 
   async getTherapistArticles(req: Request, res: Response, _next: NextFunction) {
@@ -39,7 +39,7 @@ class TherapistController {
     const { page, limit } = validateSchema(TherapistQuerySchema, req.query);
     const articles = await therapistService.getTherapistArticles(therapistId, { page, limit });
 
-    res.json(new OkResponse(articles));
+    return new OkResponse(articles).send(res);
   }
 
   async getTherapistFaqs(req: Request, res: Response, _next: NextFunction) {
@@ -47,14 +47,14 @@ class TherapistController {
     const { page, limit } = validateSchema(TherapistQuerySchema, req.query);
     const faqs = await therapistService.getTherapistFaqs(therapistId, { page, limit });
 
-    res.json(new OkResponse(faqs));
+    return new OkResponse(faqs).send(res);
   }
 
   async getTherapistAvailability(req: Request, res: Response, _next: NextFunction) {
     const therapistId = validateSchema(ObjectIdSchema, req.params.id);
     const availability = await therapistService.getTherapistAvailability(therapistId);
 
-    res.json(new OkResponse(availability));
+    return new OkResponse(availability).send(res);
   }
 }
 

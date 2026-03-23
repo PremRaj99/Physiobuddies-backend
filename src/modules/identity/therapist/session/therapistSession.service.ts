@@ -1,10 +1,12 @@
 class TherapistSessionService {
-  async getTodaySessions(therapistId: string) {
+  async getTodaySessions(_therapistId: string) {
     // Logic to fetch today's sessions for the therapist
+    return [];
   }
 
-  async getUpcomingSessions(therapistId: string) {
+  async getUpcomingSessions(_therapistId: string) {
     // Logic to fetch upcoming sessions for the therapist
+    return [];
   }
 }
 

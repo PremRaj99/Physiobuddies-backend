@@ -5,17 +5,17 @@ import { NextFunction, Request, Response } from 'express';
 export class CronController {
   expireReservations = asyncHandler(async (_req: Request, res: Response, _next: NextFunction) => {
     // Logic to expire reservations
-    res.json(new AcceptedResponse('Reservations expired successfully'));
+    return new AcceptedResponse('Reservations expired successfully').send(res);
   });
 
   markNoShow = asyncHandler(async (_req: Request, res: Response, _next: NextFunction) => {
     // Logic to mark no-shows
-    res.json(new AcceptedResponse('No-shows marked successfully'));
+    return new AcceptedResponse('No-shows marked successfully').send(res);
   });
 
   settleSessions = asyncHandler(async (_req: Request, res: Response, _next: NextFunction) => {
     // Logic to settle sessions
-    res.json(new AcceptedResponse('Sessions settled successfully'));
+    return new AcceptedResponse('Sessions settled successfully').send(res);
   });
 }
 

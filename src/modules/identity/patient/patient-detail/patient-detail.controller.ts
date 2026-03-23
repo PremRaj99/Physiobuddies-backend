@@ -15,14 +15,14 @@ class PatientDetailController {
     const parseData = validateSchema(PatientDetailsSchema, req.body);
 
     await patientDetailService.createPatientDetail(req.user.id, parseData);
-    res.status(201).json(new CreatedResponse('Patient detail created successfully'));
+    return new CreatedResponse('Patient detail created successfully').send(res);
   });
 
   getPatientDetails = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
     // Placeholder for get patient details endpoint logic
     isAuth(req);
     const patientDetails = await patientDetailService.getPatientDetails(req.user.id);
-    res.json(new OkResponse(patientDetails));
+    return new OkResponse(patientDetails).send(res);
   });
 
   updatePatientDetail = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
@@ -31,7 +31,7 @@ class PatientDetailController {
     isAuth(req);
     const parseData = validateSchema(PatientDetailsSchema, req.body);
     await patientDetailService.updatePatientDetail(patientDetailId, req.user.id, parseData);
-    res.status(202).json(new AcceptedResponse('Patient detail updated successfully'));
+    return new AcceptedResponse('Patient detail updated successfully').send(res);
   });
 
   deletePatientDetail = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
@@ -39,7 +39,7 @@ class PatientDetailController {
     const patientDetailId = validateSchema(ObjectIdSchema, req.params.id);
     isAuth(req);
     await patientDetailService.deletePatientDetail(patientDetailId, req.user.id);
-    res.status(202).json(new AcceptedResponse('Patient detail deleted successfully'));
+    return new AcceptedResponse('Patient detail deleted successfully').send(res);
   });
 }
 

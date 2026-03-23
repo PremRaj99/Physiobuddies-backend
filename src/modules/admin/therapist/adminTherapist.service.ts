@@ -1,14 +1,61 @@
+import prisma from '@/config/prisma';
+import { NotFoundError } from '@/core/errors/ApiError';
+import { UpdateCommissionRateDTO } from './adminTherapist.types';
+
 class AdminTherapistService {
   async getAllTherapists() {
-    // Logic to fetch all therapists from the database
+    const therapists = prisma.therapist.findMany({
+      where: {
+        deletedAt: null,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+    return therapists;
   }
 
   async verifyTherapist(id: string) {
-    // Logic to verify a therapist based on the provided ID
+    const therapist = await prisma.therapist.findUnique({
+      where: {
+        id,
+      },
+    });
+
+    if (!therapist) {
+      throw new NotFoundError('Therapist not found');
+    }
+
+    await prisma.therapist.update({
+      where: {
+        id,
+      },
+      data: {
+        verifiedAt: new Date(),
+      },
+    });
   }
 
-  async updateCommissionRate(id: string, commissionRate: number) {
-    // Logic to update the commission rate for a therapist based on the provided ID and commission rate
+  async updateCommissionRate(id: string, data: UpdateCommissionRateDTO) {
+    const therapist = await prisma.therapist.findUnique({
+      where: {
+        id,
+      },
+    });
+
+    if (!therapist) {
+      throw new NotFoundError('Therapist not found');
+    }
+
+    await prisma.therapist.update({
+      where: {
+        id,
+      },
+      data: {
+        commissionRate: data.commissionRate,
+        updateCommissionRateAt: new Date(),
+      },
+    });
   }
 }
 

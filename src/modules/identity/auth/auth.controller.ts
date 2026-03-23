@@ -27,7 +27,7 @@ class AuthController {
     setCookie(res, 'access_token', accessToken);
     setCookie(res, 'refresh_token', refreshToken);
 
-    res.json(new OkResponse({ accessToken, refreshToken }));
+    return new OkResponse({ accessToken, refreshToken }).send(res);
   });
 
   sendEmailBeforeSignup = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
@@ -36,7 +36,7 @@ class AuthController {
 
     await authService.sendEmailBeforeSignup(parseData.email);
 
-    res.status(202).json(new AcceptedResponse('OTP sent to email.'));
+    return new AcceptedResponse('OTP sent to email.').send(res);
   });
 
   signupPatient = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
@@ -51,7 +51,7 @@ class AuthController {
       parseData.password,
     );
 
-    res.status(201).json(new CreatedResponse('User registered successfully.'));
+    return new CreatedResponse('User registered successfully.').send(res);
   });
 
   signupPhysiotherapist = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
@@ -70,7 +70,7 @@ class AuthController {
       parseData.mode,
     );
 
-    res.status(201).json(new CreatedResponse('User registered successfully.'));
+    return new CreatedResponse('User registered successfully.').send(res);
   });
 
   google = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
@@ -81,7 +81,7 @@ class AuthController {
 
     setCookie(res, 'access_token', accessToken);
     setCookie(res, 'refresh_token', refreshToken);
-    res.json(new OkResponse({ accessToken, refreshToken }));
+    return new OkResponse({ accessToken, refreshToken }).send(res);
   });
 
   refreshToken = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
@@ -91,7 +91,7 @@ class AuthController {
     setCookie(res, 'access_token', accessToken);
     setCookie(res, 'refresh_token', refreshToken);
 
-    res.json(new OkResponse({ accessToken, refreshToken }));
+    return new OkResponse({ accessToken, refreshToken }).send(res);
   });
 
   logout = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
@@ -100,7 +100,7 @@ class AuthController {
     res.clearCookie('access_token');
     res.clearCookie('refresh_token');
     await authService.logout(req);
-    res.status(202).json(new AcceptedResponse('Logged out successfully.'));
+    return new AcceptedResponse('Logged out successfully.').send(res);
   });
 
   forgotPassword = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
@@ -110,7 +110,7 @@ class AuthController {
 
     await authService.forgotPassword(parseData.email);
 
-    res.status(202).json(new AcceptedResponse('Password reset OTP sent to email.'));
+    return new AcceptedResponse('Password reset OTP sent to email.').send(res);
   });
 
   verifyEmail = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
@@ -119,7 +119,7 @@ class AuthController {
 
     await authService.verifyEmail(parseData.email, parseData.token);
 
-    res.status(202).json(new AcceptedResponse('Email verified successfully.'));
+    return new AcceptedResponse('Email verified successfully.').send(res);
   });
 
   resetPassword = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
@@ -128,7 +128,7 @@ class AuthController {
     const parseData = validateSchema(ResetPasswordSchema, req.body);
     await authService.resetPassword(parseData.email, parseData.token, parseData.newPassword);
 
-    res.status(202).json(new AcceptedResponse('Password reset successfully.'));
+    return new AcceptedResponse('Password reset successfully.').send(res);
   });
 }
 
