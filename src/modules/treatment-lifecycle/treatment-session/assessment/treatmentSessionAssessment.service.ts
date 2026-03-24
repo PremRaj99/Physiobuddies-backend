@@ -1,4 +1,4 @@
-class SessionAssessmentService {
+class TreatmentSessionAssessmentService {
   async getAssessment(_sessionId: string) {
     // Logic to retrieve assessment for the given session ID
     return {};
@@ -9,4 +9,4 @@ class SessionAssessmentService {
   }
 }
 
-export default new SessionAssessmentService();
+export default new TreatmentSessionAssessmentService();

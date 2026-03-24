@@ -1,11 +1,11 @@
 import { asyncHandler } from '@/core/response/responseHandler';
-import sessionService from './session.service';
+import sessionService from './treatmentSession.service';
 import { Request, Response, NextFunction } from 'express';
 import { AcceptedResponse } from '@/core/response/ApiResponse';
 import { validateSchema } from '@/core/utils/validateSchema';
 import { ObjectIdSchema } from '@/modules/identity/auth/auth.type';
 
-class SessionController {
+class TreatmentSessionController {
   startSession = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
     const sessionId = validateSchema(ObjectIdSchema, req.params.id);
     await sessionService.startSession(sessionId);
@@ -30,4 +30,4 @@ class SessionController {
   });
 }
 
-export default new SessionController();
+export default new TreatmentSessionController();

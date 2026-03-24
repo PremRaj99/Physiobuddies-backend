@@ -12,6 +12,11 @@ import { therapistRouter } from './modules/identity/therapist/therapist.route';
 import { therapistRegistrationRouter } from './modules/important-data/therapist-registration/therapist-registration.route';
 import { userRouter } from './modules/identity/user/user.route';
 import { patientRouter } from './modules/identity/patient/patient.route';
+import { invoiceRouter } from './modules/billing-ledger/invoice/invoice.route';
+import { webhookRouter } from './modules/billing-ledger/webhook/webhook.route';
+import { cronRouter } from './modules/internal/cron/cron.route';
+import { reservationRouter } from './modules/treatment-lifecycle/reservation/reservation.route';
+import { treatmentSessionRouter } from './modules/treatment-lifecycle/treatment-session/treatmentSession.route';
 
 export const router = Router();
 
@@ -21,11 +26,16 @@ router.use('/patient', patientRouter);
 router.use('/therapist', therapistRouter);
 
 router.use('/admin', adminRouter);
-router.use('/treatment-plan', appointmentRouter);
 router.use('/blog', blogRouter);
 router.use('/contact', contactRouter);
+router.use('/treatment-plan', appointmentRouter);
 router.use('/coupon', couponRouter);
+router.use('/invoice', invoiceRouter);
+router.use('/webhook', webhookRouter);
 router.use('/file-upload', fileUploadRouter);
 router.use('/notification', notificationRouter);
 router.use('/payment', paymentRouter);
+router.use('/jobs', cronRouter);
 router.use('/therapist-registration', therapistRegistrationRouter);
+router.use('/reservation', reservationRouter);
+router.use('/treatment-session', treatmentSessionRouter);

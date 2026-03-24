@@ -1,12 +1,12 @@
 import { Response, Request, NextFunction } from 'express';
 import { asyncHandler } from '@/core/response/responseHandler';
-import sessionReviewService from './sessionReview.service';
+import sessionReviewService from './treatmentSessionReview.service';
 import { OkResponse, AcceptedResponse } from '@/core/response/ApiResponse';
 import { isAuth } from '@/core/middlewares/isAuth';
 import { ObjectIdSchema } from '@/modules/identity/auth/auth.type';
 import { validateSchema } from '@/core/utils/validateSchema';
 
-class SessionReviewController {
+class TreatmentSessionReviewController {
   submitReview = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
     isAuth(req);
     const sessionId = validateSchema(ObjectIdSchema, req.params.id);
@@ -23,4 +23,4 @@ class SessionReviewController {
   });
 }
 
-export default new SessionReviewController();
+export default new TreatmentSessionReviewController();

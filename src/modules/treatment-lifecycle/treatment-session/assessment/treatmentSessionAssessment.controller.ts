@@ -1,11 +1,11 @@
 import { NextFunction, Request, Response } from 'express';
 import { asyncHandler } from '@/core/response/responseHandler';
-import sessionAssessmentService from './sessionAssessment.service';
+import sessionAssessmentService from './treatmentSessionAssessment.service';
 import { AcceptedResponse, OkResponse } from '@/core/response/ApiResponse';
 import { validateSchema } from '@/core/utils/validateSchema';
 import { ObjectIdSchema } from '@/modules/identity/auth/auth.type';
 
-class SessionAssessmentController {
+class TreatmentSessionAssessmentController {
   getAssessment = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
     const sessionId = validateSchema(ObjectIdSchema, req.params.id);
     const assessment = await sessionAssessmentService.getAssessment(sessionId);
@@ -22,4 +22,4 @@ class SessionAssessmentController {
   );
 }
 
-export default new SessionAssessmentController();
+export default new TreatmentSessionAssessmentController();
