@@ -236,7 +236,7 @@ class AuthService {
   };
 
   refreshToken = async (req: Request) => {
-    const refreshToken = req.cookies.refresh_token;
+    const refreshToken = req.cookies.refresh_token || req.body.refresh;
 
     if (!refreshToken) {
       throw new ValidationError('Refresh token not provided');
@@ -264,7 +264,7 @@ class AuthService {
     const refreshToken = req.cookies.refresh_token;
 
     if (!refreshToken) {
-      throw new ValidationError('Refresh token not provided');
+      return false;
     }
 
     await prisma.authSession.delete({

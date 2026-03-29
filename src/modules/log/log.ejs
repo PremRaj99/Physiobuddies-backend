@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Server Logs</title>
+  <style>
+    :root {
+      --bg-color: #1e1e1e;
+      --card-bg: #252526;
+      --card-hover: #2a2d2e;
+      --text-main: #d4d4d4;
+      --text-muted: #858585;
+      --border-color: #333;
+      --info: #4fc1ff;
+      --error: #f48771;
+      --success: #89d185;
+      --warning: #cca700;
+      --primary: #0e639c;
+    }
+
+    body {
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      margin: 0;
+      padding: 20px;
+      line-height: 1.5;
+    }
+
+    .header-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .search-form {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+      max-width: 500px;
+    }
+
+    .search-bar {
+      flex-grow: 1;
+      padding: 10px;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      border-radius: 4px;
+      font-family: inherit;
+    }
+
+    .search-bar:focus {
+      outline: none;
+      border-color: var(--info);
+    }
+
+    .btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .btn:hover {
+      background: #1177bb;
+    }
+
+    .btn:disabled {
+      background: var(--border-color);
+      cursor: not-allowed;
+      color: var(--text-muted);
+    }
+
+    .log-entry {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-left: 4px solid var(--border-color);
+      margin-bottom: 8px;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .log-entry.level-error {
+      border-left-color: var(--error);
+    }
+
+    .log-entry.level-info {
+      border-left-color: var(--info);
+    }
+
+    .log-header {
+      padding: 12px 15px;
+      cursor: pointer;
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      flex-wrap: wrap;
+      transition: background 0.2s;
+    }
+
+    .log-header:hover {
+      background: var(--card-hover);
+    }
+
+    .timestamp {
+      color: var(--text-muted);
+      font-size: 0.9em;
+      min-width: 190px;
+    }
+
+    .level {
+      font-weight: bold;
+      text-transform: uppercase;
+      width: 50px;
+    }
+
+    .level.info {
+      color: var(--info);
+    }
+
+    .level.error {
+      color: var(--error);
+    }
+
+    .badge {
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.85em;
+      background: #333;
+      font-weight: bold;
+    }
+
+    .badge.get {
+      background: #007acc;
+      color: white;
+    }
+
+    .badge.post {
+      background: #49cc90;
+      color: white;
+    }
+
+    .badge.put {
+      background: #fca130;
+      color: white;
+    }
+
+    .badge.delete {
+      background: #f93e3e;
+      color: white;
+    }
+
+    .badge.status-ok {
+      background: var(--success);
+      color: #000;
+    }
+
+    .badge.status-error {
+      background: var(--error);
+      color: #000;
+    }
+
+    .message {
+      flex-grow: 1;
+      font-weight: 500;
+    }
+
+    .url {
+      color: #ce9178;
+    }
+
+    .log-details {
+      display: none;
+      padding: 15px;
+      border-top: 1px solid var(--border-color);
+      background: #1a1a1a;
+      font-size: 0.9em;
+    }
+
+    .log-details.open {
+      display: block;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .meta-item strong {
+      color: var(--info);
+    }
+
+    pre.stack {
+      color: var(--error);
+      background: #2d0000;
+      padding: 15px;
+      border-radius: 4px;
+      overflow-x: auto;
+      border: 1px solid #4a0000;
+      margin: 0;
+      white-space: pre-wrap;
+    }
+
+    .pagination {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 20px;
+      padding: 15px;
+      background: var(--card-bg);
+      border-radius: 4px;
+      border: 1px solid var(--border-color);
+    }
+
+    .page-info {
+      color: var(--text-muted);
+    }
+
+    @keyframes flashIn {
+      0% {
+        background-color: #04395e;
+        transform: translateX(-10px);
+      }
+
+      100% {
+        background-color: var(--card-bg);
+        transform: translateX(0);
+      }
+    }
+
+    .new-live-log {
+      animation: flashIn 1s ease-out forwards;
+      border-left-color: var(--success) !important;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="header-container">
+    <h2>System Logs (<%= totalLogs %> total)</h2>
+
+    <form class="search-form" method="GET" action="/api/v1/logs">
+      <input type="text" name="search" class="search-bar" placeholder="Search logs..." value="<%= search %>">
+      <input type="hidden" name="limit" value="<%= limit %>">
+      <button type="submit" class="btn">Search</button>
+      <% if (search) { %>
+      <a href="/api/v1/logs" class="btn" style="background: var(--border-color); text-decoration: none; text-align: center;">Clear</a>
+      <% } %>
+    </form>
+  </div>
+
+  <div id="logs-container">
+    <% if (logs.length === 0) { %>
+    <div style="padding: 20px; text-align: center; color: var(--text-muted);">No logs found.</div>
+    <% } %>
+
+    <% logs.forEach(function(log, index) { %>
+    <div class="log-entry level-<%= log.level || 'info' %>">
+      <div class="log-header" onclick="toggleDetails('details-<%= index %>')">
+        <span class="timestamp"><%= log.timestamp ? log.timestamp.replace('T', ' ').replace('Z', '') : 'No timestamp' %></span>
+        <span class="level <%= log.level %>"><%= log.level %></span>
+
+        <span class="message"><%= log.message %></span>
+
+        <% if (log.method) { %>
+        <span class="badge <%= log.method.toLowerCase() %>"><%= log.method %></span>
+        <% } %>
+
+        <% if (log.url) { %>
+        <span class="url"><%= log.url %></span>
+        <% } %>
+
+        <% if (log.status) { %>
+        <span class="badge <%= log.status >= 400 ? 'status-error' : 'status-ok' %>"><%= log.status %></span>
+        <% } %>
+
+        <% if (log.duration) { %>
+        <span style="color: var(--text-muted);"><%= log.duration %>ms</span>
+        <% } %>
+      </div>
+
+      <div class="log-details" id="details-<%= index %>">
+        <div class="meta-grid">
+          <% Object.keys(log).forEach(function(key) { %>
+          <% if (!['level', 'message', 'timestamp', 'stack'].includes(key)) { %>
+          <div class="meta-item">
+            <strong><%= key %>:</strong> <%= log[key] %>
+          </div>
+          <% } %>
+          <% }); %>
+        </div>
+
+        <% if (log.stack) { %>
+        <pre class="stack"><%= log.stack %></pre>
+        <% } %>
+      </div>
+    </div>
+    <% }); %>
+  </div>
+
+  <% if (totalPages > 1) { %>
+  <div class="pagination">
+    <div class="page-info">
+      Showing <%= (currentPage - 1) * limit + 1 %> - <%= Math.min(currentPage * limit, totalLogs) %> of <%= totalLogs %>
+    </div>
+
+    <div style="display: flex; gap: 10px;">
+      <button class="btn" onclick="goToPage(<%= currentPage - 1 %>)" <%= currentPage === 1 ? 'disabled' : '' %>>Previous</button>
+
+      <span style="padding: 8px;">Page <%= currentPage %> of <%= totalPages %></span>
+
+      <button class="btn" onclick="goToPage(<%= currentPage + 1 %>)" <%= currentPage === totalPages ? 'disabled' : '' %>>Next</button>
+    </div>
+  </div>
+  <% } %>
+
+  <script>
+    function toggleDetails(id) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.toggle('open');
+      }
+    }
+
+    // Helper function to update the URL parameters for pagination while preserving search query
+    function goToPage(page) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('page', page);
+      window.location.href = url.toString();
+    }
+  </script>
+  
+  <script>
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/api/v1/logs/live`;
+    const socket = new WebSocket(wsUrl);
+
+    socket.onopen = () => {
+      document.querySelector('h2').innerHTML += ' <span style="color: var(--success); font-size: 0.5em; vertical-align: middle;">🔴 LIVE</span>';
+    };
+
+    // Handle Incoming Messages
+    socket.onmessage = (event) => {
+      try {
+        const log = JSON.parse(event.data);
+        appendLogToUI(log);
+      } catch (e) {
+        // Silently ignore parse errors
+      }
+    };
+
+    function appendLogToUI(log) {
+      try {
+        const container = document.getElementById('logs-container');
+
+        if (!container) return;
+
+        // 1. Clear out "No logs found" text if it's the very first log
+        const firstChild = container.firstElementChild;
+        if (firstChild && firstChild.textContent.includes('No logs found')) {
+          firstChild.remove();
+        }
+
+        // 2. Create the element with the new flash animation class
+        const logDiv = document.createElement('div');
+        logDiv.className = `log-entry new-live-log level-${log.level || 'info'}`;
+
+        // 3. Generate unique ID for the dropdown
+        const detailsId = `details-ws-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+        // 4. Build the dynamic Meta Grid (Match EJS formatting)
+        let metaHtml = '<div class="meta-grid">';
+        Object.keys(log).forEach(key => {
+          if (!['level', 'message', 'timestamp', 'stack'].includes(key)) {
+            metaHtml += `<div class="meta-item"><strong>${key}:</strong> ${log[key]}</div>`;
+          }
+        });
+        metaHtml += '</div>';
+
+        // 5. Only create the red stack trace box if an actual error stack exists
+        let stackHtml = log.stack ? `<pre class="stack">${log.stack}</pre>` : '';
+
+        // 6. Build the HTML
+        logDiv.innerHTML = `
+            <div class="log-header" onclick="toggleDetails('${detailsId}')">
+                <span class="badge" style="background: var(--success); color: black;">NEW</span>
+                <span class="timestamp">${log.timestamp ? log.timestamp.replace('T', ' ').replace('Z', '') : 'Live Now'}</span>
+                <span class="level ${log.level || 'INFO'}">${log.level || 'INFO'}</span>
+                <span class="message">${log.message || 'No message'}</span>
+                ${log.method ? `<span class="badge ${log.method.toLowerCase()}">${log.method}</span>` : ''}
+                ${log.url ? `<span class="url">${log.url}</span>` : ''}
+                ${log.status ? `<span class="badge ${log.status >= 400 ? 'status-error' : 'status-ok'}">${log.status}</span>` : ''}
+                ${log.duration ? `<span style="color: var(--text-muted);">${log.duration}ms</span>` : ''}
+            </div>
+            <div class="log-details" id="${detailsId}">
+                ${metaHtml}
+                ${stackHtml}
+            </div>
+        `;
+
+        // 7. Inject into DOM
+        container.insertBefore(logDiv, container.firstChild);
+
+        // 8. Memory management: Remove old logs if list gets too long
+        if (container.children.length > 100) {
+          container.removeChild(container.lastChild);
+        }
+      } catch (err) {
+        // Silently ignore rendering errors
+      }
+    }
+  </script>
+</body>
+
+</html>

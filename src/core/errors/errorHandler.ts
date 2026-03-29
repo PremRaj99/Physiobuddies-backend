@@ -25,7 +25,6 @@ export const errorHandlerMiddleware = (
   });
 
   return res.status(statusCode).json({
-    statusCode,
     message,
     success: false,
   });

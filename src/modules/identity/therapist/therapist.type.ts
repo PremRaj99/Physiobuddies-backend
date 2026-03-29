@@ -14,7 +14,11 @@ export const TherapistQuerySchema = z.object({
   limit: z.number().int().positive().optional(),
 });
 
+export type TherapistQueryDTO = z.infer<typeof TherapistQuerySchema>;
+
 export const TherapistLocationQuerySchema = z.object({
   lng: z.number().optional(),
   lat: z.number().optional(),
 });
+
+export type TherapistLocationQueryDTO = z.infer<typeof TherapistLocationQuerySchema>;

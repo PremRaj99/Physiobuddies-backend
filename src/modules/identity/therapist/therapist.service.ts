@@ -1,10 +1,9 @@
 import prisma from '@/config/prisma';
+import { NotFoundError } from '@/core/errors/ApiError';
 import { convertISTRangeToUTC } from '@/core/utils/time-zone';
 import { addDays } from 'date-fns';
-import z from 'zod';
 import { calculateDistance } from './calculateDistance';
-import { TherapistQuerySchema } from './therapist.type';
-import { NotFoundError } from '@/core/errors/ApiError';
+import { TherapistQueryDTO } from './therapist.type';
 
 class TherapistService {
   getTherapistByUserId = async (userId: string) => {
@@ -15,7 +14,7 @@ class TherapistService {
     return therapist;
   };
 
-  getAllTherapists = async (query: z.infer<typeof TherapistQuerySchema>) => {
+  getAllTherapists = async (query: TherapistQueryDTO) => {
     // default pagination values
     const limit = query.limit || 10;
     const page = query.page || 1;
@@ -24,15 +23,28 @@ class TherapistService {
     // Initial lightweight query to filter and sort by distance if needed
     const lightweightTherapists = await prisma.therapist.findMany({
       where: {
-        ...(query.specialization?.length && {
-          meta: { specialization: { hasSome: query.specialization } },
-        }),
-        ...(query.price?.length === 2 && {
-          price: { gte: query.price[0], lte: query.price[1] },
-        }),
-        ...(query.experience?.length === 2 && {
-          meta: { experience: { gte: query.experience[0], lte: query.experience[1] } },
-        }),
+        ...(query.specialization?.length &&
+          query.specialization?.length > 0 && {
+            meta: { specialization: { hasSome: query.specialization } },
+          }),
+        ...(query.price &&
+          query.price[0] !== undefined &&
+          query.price[1] !== undefined && {
+            price: {
+              gte: query.price[0],
+              lte: query.price[1],
+            },
+          }),
+        ...(query.experience &&
+          query.experience[0] !== undefined &&
+          query.experience[1] !== undefined && {
+            meta: {
+              experience: {
+                gte: query.experience[0],
+                lte: query.experience[1],
+              },
+            },
+          }),
         ...(query.mode && { mode: query.mode }),
         ...(query.gender && { gender: query.gender }),
       },
@@ -271,6 +283,10 @@ class TherapistService {
     for (let i = 0; i < 3; i++) {
       const currentDay = addDays(todayStart, i);
       const dateKey = currentDay.toISOString().split('T')[0]; // YYYY-MM-DD
+
+      if (!dateKey) {
+        break;
+      }
 
       // Formatting for your specific output "DD-MM-YYYY"
       const [year, month, day] = dateKey.split('-');

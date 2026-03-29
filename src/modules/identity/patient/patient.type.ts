@@ -1,12 +1,14 @@
 import { z } from 'zod';
 import { PhoneRegex } from '../auth/auth.type';
 
+export const dateSchema = z.preprocess((val) => (val ? new Date(val as string) : val), z.date());
+
 export const PatientDetailsSchema = z.object({
   name: z
     .string({ message: 'Name is required' })
     .trim()
     .min(3, { message: 'Name Should have atleast 3 character' }),
-  dob: z.date(),
+  dob: dateSchema,
   gender: z.enum(['male', 'female', 'other'], {
     message: "Gender must be 'male', 'female', or 'other'",
   }),
@@ -17,6 +19,9 @@ export const PatientDetailsSchema = z.object({
 });
 
 export const UpdatePatientDetailsSchema = PatientDetailsSchema.partial();
+
+export type PatientDetailsDTO = z.infer<typeof PatientDetailsSchema>;
+export type UpdatePatientDetailsDTO = z.infer<typeof UpdatePatientDetailsSchema>;
 
 export const PatientLocationSchema = z.object({
   address: z.string({ message: 'Address is required' }).trim(),
@@ -29,5 +34,8 @@ export const PatientLocationSchema = z.object({
     lat: z.number({ message: 'Latitude is required' }),
   }),
 });
+export type PatientLocationDTO = z.infer<typeof PatientLocationSchema>;
 
 export const UpdatePatientLocationSchema = PatientLocationSchema.partial();
+
+export type UpdatePatientLocationDTO = z.infer<typeof UpdatePatientLocationSchema>;

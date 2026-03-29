@@ -10,7 +10,7 @@ class TherapistPayoutController {
   requestPayout = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
     isAuth(req);
     const userId = req.user.id;
-    const { amount, paymentMethod } = req.body;
+    const { amount } = req.body;
     await therapistPayoutService.requestPayout(userId, amount);
     return new AcceptedResponse('Payout requested successfully').send(res);
   });
@@ -26,7 +26,7 @@ class TherapistPayoutController {
     isAuth(req);
     const userId = req.user.id;
     const payoutId = validateSchema(ObjectIdSchema, req.params.id);
-    const payout = await therapistPayoutService.getPayoutById(payoutId);
+    const payout = await therapistPayoutService.getPayoutById(payoutId, userId);
     return new OkResponse(payout).send(res);
   });
 }

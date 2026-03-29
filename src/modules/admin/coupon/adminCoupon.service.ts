@@ -64,17 +64,26 @@ class AdminCouponService {
       throw new NotFoundError('Coupon not found');
     }
 
+    const updateData = Object.fromEntries(
+      Object.entries({
+        code: data.code,
+        minPrice: data.minPrice,
+        discount: data.discount,
+        expiresOn:
+          data.expiresOn !== undefined
+            ? data.expiresOn === '' || data.expiresOn === null
+              ? null
+              : new Date(data.expiresOn)
+            : undefined,
+        status: data.status,
+        isGlobal: data.isGlobal,
+      }).filter(([_, v]) => v !== undefined),
+    );
+
     await prisma.$transaction(async (txn) => {
       await txn.coupon.update({
         where: { id },
-        data: {
-          code: data.code,
-          minPrice: data.minPrice,
-          discount: data.discount,
-          expiresOn: data.expiresOn ? new Date(data.expiresOn) : undefined,
-          status: data.status,
-          isGlobal: data.isGlobal,
-        },
+        data: updateData,
       });
       if (data.patientIds !== undefined) {
         await txn.couponAssignment.deleteMany({ where: { couponId: id } });

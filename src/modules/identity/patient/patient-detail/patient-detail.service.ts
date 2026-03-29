@@ -1,11 +1,11 @@
 import prisma from '@/config/prisma';
-import type { PatientDetailsSchema, UpdatePatientDetailsSchema } from '../patient.type';
-import type z from 'zod';
 import { patientService } from '../patient.service';
+import type { PatientDetailsDTO, UpdatePatientDetailsDTO } from '../patient.type';
+import { updatePatientDetailData } from './patient-detail.helper';
 
 class PatientDetailService {
   // Implement patient detail-specific business logic here
-  createPatientDetail = async (userId: string, data: z.infer<typeof PatientDetailsSchema>) => {
+  createPatientDetail = async (userId: string, data: PatientDetailsDTO) => {
     const patient = await patientService.getPatientByUserId(userId);
     await prisma.patientDetail.create({
       data: {
@@ -33,19 +33,12 @@ class PatientDetailService {
     }));
   };
 
-  updatePatientDetail = async (
-    detailId: string,
-    userId: string,
-    data: z.infer<typeof UpdatePatientDetailsSchema>,
-  ) => {
+  updatePatientDetail = async (detailId: string, userId: string, data: UpdatePatientDetailsDTO) => {
+    const updateData = updatePatientDetailData(data);
+
     await prisma.patientDetail.update({
       where: { id: detailId, deletedAt: null, patient: { userId } },
-      data: {
-        name: data.name,
-        dob: data.dob,
-        gender: data.gender,
-        phone: data.phone,
-      },
+      data: updateData,
     });
   };
   deletePatientDetail = async (detailId: string, userId: string) => {

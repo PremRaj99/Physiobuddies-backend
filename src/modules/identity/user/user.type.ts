@@ -14,11 +14,17 @@ export const UpdateUserSchema = z.object({
     .optional(),
 });
 
+export type UpdateUserDTO = z.infer<typeof UpdateUserSchema>;
+
 export const UpdateAvatarSchema = z.object({
   avatar: z.string({ message: 'Avatar URL is required' }).trim().url('Invalid URL format'),
 });
+
+export type UpdateAvatarDTO = z.infer<typeof UpdateAvatarSchema>;
 
 export const ChangePasswordSchema = z.object({
   currentPassword: PasswordSchema,
   newPassword: PasswordSchema,
 });
+
+export type ChangePasswordDTO = z.infer<typeof ChangePasswordSchema>;

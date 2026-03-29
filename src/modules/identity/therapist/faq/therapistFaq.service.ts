@@ -2,6 +2,7 @@ import prisma from '@/config/prisma';
 import { NotFoundError } from '@/core/errors/ApiError';
 import { therapistService } from '../therapist.service';
 import { TherapistFaqDTO, UpdateTherapistFaqDTO } from './therapistFaq.type';
+import { updateTherapistFaq } from './therapistFaq.helper';
 
 class therapistFaqService {
   async createFaq(data: TherapistFaqDTO, userId: string) {
@@ -28,12 +29,11 @@ class therapistFaqService {
       throw new NotFoundError('Faq not found');
     }
 
+    const updateData = updateTherapistFaq(data);
+
     await prisma.therapistFAQ.update({
       where: { id },
-      data: {
-        question: data.question,
-        answer: data.answer,
-      },
+      data: updateData,
     });
 
     return;

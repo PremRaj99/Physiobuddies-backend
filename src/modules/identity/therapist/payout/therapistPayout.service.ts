@@ -12,7 +12,7 @@ class TherapistPayoutService {
     return []; // Placeholder return value
   }
 
-  async getPayoutById(_payoutId: string) {
+  async getPayoutById(_payoutId: string, _userId: string) {
     // Logic to retrieve a specific payout request by its ID
     // This would typically involve querying the database for the payout record with the given ID
     return {}; // Placeholder return value

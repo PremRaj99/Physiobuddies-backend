@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { swaggerRouter } from './core/api-docs/swagger';
 import { adminRouter } from './modules/admin/admin.route';
 import { appointmentRouter } from './modules/treatment-lifecycle/treatment/appointment.route';
 import { authRouter } from './modules/identity/auth/auth.route';
@@ -17,8 +18,13 @@ import { webhookRouter } from './modules/billing-ledger/webhook/webhook.route';
 import { cronRouter } from './modules/internal/cron/cron.route';
 import { reservationRouter } from './modules/treatment-lifecycle/reservation/reservation.route';
 import { treatmentSessionRouter } from './modules/treatment-lifecycle/treatment-session/treatmentSession.route';
+import { logRouter } from './modules/log/log.route';
+// src/app.ts
+import '@/core/api-docs/swagger-init';
 
 export const router = Router();
+
+router.use('/docs', swaggerRouter);
 
 router.use('/auth', authRouter);
 router.use('/user', userRouter);
@@ -39,3 +45,6 @@ router.use('/jobs', cronRouter);
 router.use('/therapist-registration', therapistRegistrationRouter);
 router.use('/reservation', reservationRouter);
 router.use('/treatment-session', treatmentSessionRouter);
+
+// dev route
+router.use('/logs', logRouter);

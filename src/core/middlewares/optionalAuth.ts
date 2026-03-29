@@ -5,12 +5,11 @@ import { UnauthorizedError } from '../errors/ApiError';
 import { asyncHandler } from '../response/responseHandler';
 import { logger } from '../logger/logger';
 
-export const optionalAuth = asyncHandler((req: Request, res: Response, next: NextFunction) => {
+export const optionalAuth = asyncHandler((req: Request, _res: Response, next: NextFunction) => {
   const header = req.cookies?.['access_token'] || req.headers.authorization;
   const token = header?.replace('Bearer ', '');
 
   if (!token) {
-    req.user = undefined; // no login
     return next();
   }
 

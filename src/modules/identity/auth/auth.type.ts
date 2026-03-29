@@ -65,6 +65,14 @@ export const SignupPhysiotherapistSchema = z.object({
   }),
 });
 
+export const GoogleLoginSchema = z.object({
+  code: z.string('invalid login'),
+});
+
+export const RefershTokenSchema = z.object({
+  refresh: z.string().optional(),
+});
+
 export const ForgotPasswordSchema = z.object({
   email: EmailSchema,
 });
@@ -79,3 +87,11 @@ export const ResetPasswordSchema = z.object({
   token: OtpTokenSchema,
   newPassword: PasswordSchema,
 });
+
+export type LoginDTO = z.infer<typeof LoginSchema>;
+export type SendEmailBeforeSignupDTO = z.infer<typeof SendEmailBeforeSignupSchema>;
+export type SignupPatientDTO = z.infer<typeof SignupPatientSchema>;
+export type SignupPhysiotherapistDTO = z.infer<typeof SignupPhysiotherapistSchema>;
+export type ForgotPasswordDTO = z.infer<typeof ForgotPasswordSchema>;
+export type VerifyEmailDTO = z.infer<typeof VerifyEmailSchema>;
+export type ResetPasswordDTO = z.infer<typeof ResetPasswordSchema>;

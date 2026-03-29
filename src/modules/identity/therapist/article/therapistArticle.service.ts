@@ -2,6 +2,7 @@ import prisma from '@/config/prisma';
 import { therapistService } from '../therapist.service';
 import { TherapistArticleDTO, UpdateTherapistArticleDTO } from './therapistArticle.type';
 import { NotFoundError } from '@/core/errors/ApiError';
+import { updateTherapistArticleData } from './therapistArticle.helper';
 
 class therapistArticleService {
   async createArticle(data: TherapistArticleDTO, userId: string) {
@@ -28,12 +29,11 @@ class therapistArticleService {
       throw new NotFoundError('Article not found');
     }
 
+    const updateData = updateTherapistArticleData(data);
+
     await prisma.therapistArticle.update({
       where: { id },
-      data: {
-        title: data.title,
-        content: data.content,
-      },
+      data: updateData,
     });
 
     return;

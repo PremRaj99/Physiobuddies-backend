@@ -17,8 +17,8 @@ class TherapistController {
     const therapistId = validateSchema(ObjectIdSchema, req.params.id);
     const { lat, lng } = validateSchema(TherapistQuerySchema, req.query);
     const location = {
-      lat: lat ? Number(lat) : undefined,
-      lng: lng ? Number(lng) : undefined,
+      ...(lat !== undefined && { lat: Number(lat) }),
+      ...(lng !== undefined && { lng: Number(lng) }),
     };
 
     const therapist = await therapistService.getTherapistById(therapistId, location);
@@ -29,7 +29,13 @@ class TherapistController {
   async getTherapistReviews(req: Request, res: Response, _next: NextFunction) {
     const therapistId = validateSchema(ObjectIdSchema, req.params.id);
     const { page, limit } = validateSchema(TherapistQuerySchema, req.query);
-    const reviews = await therapistService.getTherapistReviews(therapistId, { page, limit });
+
+    const pagination = {
+      ...(page !== undefined && { page }),
+      ...(limit !== undefined && { limit }),
+    };
+
+    const reviews = await therapistService.getTherapistReviews(therapistId, pagination);
 
     return new OkResponse(reviews).send(res);
   }
@@ -37,7 +43,13 @@ class TherapistController {
   async getTherapistArticles(req: Request, res: Response, _next: NextFunction) {
     const therapistId = validateSchema(ObjectIdSchema, req.params.id);
     const { page, limit } = validateSchema(TherapistQuerySchema, req.query);
-    const articles = await therapistService.getTherapistArticles(therapistId, { page, limit });
+
+    const pagination = {
+      ...(page !== undefined && { page }),
+      ...(limit !== undefined && { limit }),
+    };
+
+    const articles = await therapistService.getTherapistArticles(therapistId, pagination);
 
     return new OkResponse(articles).send(res);
   }
@@ -45,7 +57,13 @@ class TherapistController {
   async getTherapistFaqs(req: Request, res: Response, _next: NextFunction) {
     const therapistId = validateSchema(ObjectIdSchema, req.params.id);
     const { page, limit } = validateSchema(TherapistQuerySchema, req.query);
-    const faqs = await therapistService.getTherapistFaqs(therapistId, { page, limit });
+
+    const pagination = {
+      ...(page !== undefined && { page }),
+      ...(limit !== undefined && { limit }),
+    };
+
+    const faqs = await therapistService.getTherapistFaqs(therapistId, pagination);
 
     return new OkResponse(faqs).send(res);
   }

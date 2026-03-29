@@ -1,6 +1,8 @@
 import prisma from '@/config/prisma';
 import { NotFoundError } from '@/core/errors/ApiError';
 import bcrypt from 'bcrypt';
+import { UpdateUserDTO } from './user.type';
+import { updateInfoData } from './user.helper';
 
 class UserService {
   getUserById = async (id: string) => {
@@ -28,16 +30,15 @@ class UserService {
     };
   };
 
-  updateInfo = async (userId: string, data: { name?: string; mobile?: string }) => {
+  updateInfo = async (userId: string, data: UpdateUserDTO) => {
     // Implementation to update user information
     const user = await this.getUserById(userId);
 
+    const updateData = updateInfoData(data);
+
     await prisma.user.update({
       where: { id: user.id },
-      data: {
-        name: data.name,
-        phone: data.mobile,
-      },
+      data: updateData,
     });
   };
 

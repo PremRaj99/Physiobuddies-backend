@@ -5,7 +5,6 @@
     "lib": ["es2017", "esnext.asynciterable"],
     "outDir": "./dist",
     "rootDir": "./src",
-    "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
@@ -13,6 +12,25 @@
     "paths": {
       "@/*": ["./src/*"]
     },
+
+    // required checks
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "allowUnusedLabels": false,
+    "noUncheckedSideEffectImports": true,
+    "noFallthroughCasesInSwitch": true,
+    "allowUnreachableCode": false,
+    "noImplicitAny": true,
+
+    // Optional checks
+    "noUncheckedIndexedAccess": true,
+    // "noPropertyAccessFromIndexSignature": true,
+    "erasableSyntaxOnly": true,
+    "noImplicitOverride": true,
+    "noErrorTruncation": true,
+    "exactOptionalPropertyTypes": true,
+
     "types": ["node", "express"]
   },
   "ts-node": {

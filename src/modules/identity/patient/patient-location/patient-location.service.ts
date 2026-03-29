@@ -1,11 +1,11 @@
-import type z from 'zod';
-import type { PatientLocationSchema, UpdatePatientLocationSchema } from '../patient.type';
 import prisma from '@/config/prisma';
 import { patientService } from '../patient.service';
+import type { PatientLocationDTO, UpdatePatientLocationDTO } from '../patient.type';
+import { updatePatientLocationData } from './patient-location.helper';
 
 class PatientLocationService {
   // Implement patient location-specific business logic here
-  createPatientLocation = async (userId: string, data: z.infer<typeof PatientLocationSchema>) => {
+  createPatientLocation = async (userId: string, data: PatientLocationDTO) => {
     const patient = await patientService.getPatientByUserId(userId);
     await prisma.patientLocation.create({
       data: {
@@ -47,25 +47,12 @@ class PatientLocationService {
   updatePatientLocation = async (
     locationId: string,
     userId: string,
-    data: z.infer<typeof UpdatePatientLocationSchema>,
+    data: UpdatePatientLocationDTO,
   ) => {
+    const updateData = updatePatientLocationData(data);
     await prisma.patientLocation.update({
       where: { id: locationId, patient: { userId } },
-      data: {
-        address: data.address,
-        landmark: data.landmark,
-        city: data.city,
-        state: data.state,
-        postalCode: data.postalCode,
-        location: data.location
-          ? {
-              update: {
-                lat: data.location.lat,
-                lng: data.location.lng,
-              },
-            }
-          : undefined,
-      },
+      data: updateData,
     });
   };
 

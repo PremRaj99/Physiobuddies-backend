@@ -1,3 +1,5 @@
+import { Logger } from 'winston';
+
 declare global {
   namespace Express {
     interface Request {
@@ -5,6 +7,8 @@ declare global {
         id: string;
         role: string;
       };
+      requestId?: string;
+      logger: Logger;
     }
   }
 }

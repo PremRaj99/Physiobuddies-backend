@@ -4,7 +4,9 @@ import { asyncHandler } from '@/core/response/responseHandler';
 import { validateSchema } from '@/core/utils/validateSchema';
 import {
   ForgotPasswordSchema,
+  GoogleLoginSchema,
   LoginSchema,
+  RefershTokenSchema,
   ResetPasswordSchema,
   SendEmailBeforeSignupSchema,
   SignupPatientSchema,
@@ -70,14 +72,14 @@ class AuthController {
       parseData.mode,
     );
 
-    return new CreatedResponse('User registered successfully.').send(res);
+    return new CreatedResponse('Physiotherapist registered successfully.').send(res);
   });
 
   google = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
     // Implement Google OAuth logic here using authService
-    const { code } = req.query;
+    const parseData = validateSchema(GoogleLoginSchema, req.query);
 
-    const { accessToken, refreshToken } = await authService.google(String(code), req);
+    const { accessToken, refreshToken } = await authService.google(parseData.code, req);
 
     setCookie(res, 'access_token', accessToken);
     setCookie(res, 'refresh_token', refreshToken);
@@ -86,6 +88,8 @@ class AuthController {
 
   refreshToken = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
     // Implement refresh token logic here using authService
+    validateSchema(RefershTokenSchema, req.body);
+
     const { accessToken, refreshToken } = await authService.refreshToken(req);
 
     setCookie(res, 'access_token', accessToken);
