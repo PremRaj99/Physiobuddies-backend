@@ -5,13 +5,14 @@ import { OkResponse, AcceptedResponse } from '@/core/response/ApiResponse';
 import { isAuth } from '@/core/middlewares/isAuth';
 import { validateSchema } from '@/core/utils/validateSchema';
 import { ObjectIdSchema } from '../../auth/auth.type';
+import { RequestPayoutSchema } from './therapistPayout.types';
 
 class TherapistPayoutController {
   requestPayout = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
     isAuth(req);
     const userId = req.user.id;
-    const { amount } = req.body;
-    await therapistPayoutService.requestPayout(userId, amount);
+    const parseData = validateSchema(RequestPayoutSchema, req.body);
+    await therapistPayoutService.requestPayout(userId, parseData.amount);
     return new AcceptedResponse('Payout requested successfully').send(res);
   });
 

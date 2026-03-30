@@ -4,7 +4,7 @@ import {
   OpenAPIRegistry,
   OpenApiGeneratorV3,
 } from '@asteasolutions/zod-to-openapi';
-import { Router } from 'express';
+import { Request, Response, NextFunction, Router } from 'express';
 import { z } from 'zod';
 import swaggerUi from 'swagger-ui-express';
 
@@ -30,7 +30,12 @@ export const swaggerRouter = Router();
 // FIX: Use a getter function so the doc is generated when the route is hit,
 // ensuring all 'registerApiRoute' calls from other files have finished.
 swaggerRouter.use('/', swaggerUi.serve);
-swaggerRouter.get('/', (req, res, next) => {
+swaggerRouter.get('/', (req: Request, res: Response, next: NextFunction) => {
   const doc = generateOpenAPIDocument();
   return swaggerUi.setup(doc)(req, res, next);
+});
+
+swaggerRouter.get('/doc.json', (_req: Request, res: Response, _next: NextFunction) => {
+  const doc = generateOpenAPIDocument();
+  res.json(doc);
 });

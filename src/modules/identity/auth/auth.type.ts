@@ -4,6 +4,10 @@ export const PhoneRegex = new RegExp(/^(\+\d{1,3}[ -]?)?\d{9,14}$/);
 
 export const ObjectIdSchema = z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid ObjectId format');
 
+export const ParamsObjectIdSchema = z.object({
+  id: ObjectIdSchema,
+});
+
 export const OtpTokenSchema = z
   .string({ message: 'token is required' })
   .length(6, { message: 'token should be 6 characters' });

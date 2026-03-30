@@ -1,7 +1,7 @@
 import { asyncHandler } from '@/core/response/responseHandler';
 import { validateSchema } from '@/core/utils/validateSchema';
 import type { NextFunction, Request, Response } from 'express';
-import { PatientDetailsSchema } from '../patient.type';
+import { PatientDetailsSchema, UpdatePatientDetailsSchema } from '../patient.type';
 import { patientDetailService } from './patient-detail.service';
 import { isAuth } from '@/core/middlewares/isAuth';
 import { ObjectIdSchema } from '../../auth/auth.type';
@@ -29,7 +29,7 @@ class PatientDetailController {
     // Placeholder for update patient detail endpoint logic
     const patientDetailId = validateSchema(ObjectIdSchema, req.params.id);
     isAuth(req);
-    const parseData = validateSchema(PatientDetailsSchema, req.body);
+    const parseData = validateSchema(UpdatePatientDetailsSchema, req.body);
     await patientDetailService.updatePatientDetail(patientDetailId, req.user.id, parseData);
     return new AcceptedResponse('Patient detail updated successfully').send(res);
   });

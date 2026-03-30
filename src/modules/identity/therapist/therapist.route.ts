@@ -20,4 +20,5 @@ therapistRouter.get('/', therapistController.getAllTherapists);
 therapistRouter.get('/:id', therapistController.getTherapistById);
 therapistRouter.get('/:id/reviews', therapistController.getTherapistReviews);
 therapistRouter.get('/:id/articles', therapistController.getTherapistArticles);
+therapistRouter.get('/:id/faqs', therapistController.getTherapistFaqs);
 therapistRouter.get('/:id/availability', therapistController.getTherapistAvailability);
