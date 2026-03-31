@@ -1,4 +1,3 @@
-import type { Request, Response, NextFunction } from 'express';
 import { authService } from './auth.service';
 import { asyncHandler } from '@/core/response/responseHandler';
 import { validateSchema } from '@/core/utils/validateSchema';
@@ -17,7 +16,7 @@ import { setCookie } from './setCookie';
 import { AcceptedResponse, CreatedResponse, OkResponse } from '@/core/response/ApiResponse';
 
 class AuthController {
-  login = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+  login = asyncHandler(async (req, res, _next) => {
     const parseData = validateSchema(LoginSchema, req.body);
 
     const { accessToken, refreshToken } = await authService.login(
@@ -32,7 +31,7 @@ class AuthController {
     return new OkResponse({ accessToken, refreshToken }).send(res);
   });
 
-  sendEmailBeforeSignup = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+  sendEmailBeforeSignup = asyncHandler(async (req, res, _next) => {
     // Implement email verification before signup logic here using authService
     const parseData = validateSchema(SendEmailBeforeSignupSchema, req.body);
 
@@ -41,7 +40,7 @@ class AuthController {
     return new AcceptedResponse('OTP sent to email.').send(res);
   });
 
-  signupPatient = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+  signupPatient = asyncHandler(async (req, res, _next) => {
     // Implement signup logic here using authService
     const parseData = validateSchema(SignupPatientSchema, req.body);
 
@@ -56,7 +55,7 @@ class AuthController {
     return new CreatedResponse('User registered successfully.').send(res);
   });
 
-  signupPhysiotherapist = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+  signupPhysiotherapist = asyncHandler(async (req, res, _next) => {
     // Implement signup logic here using authService
     const parseData = validateSchema(SignupPhysiotherapistSchema, req.body);
 
@@ -75,7 +74,7 @@ class AuthController {
     return new CreatedResponse('Physiotherapist registered successfully.').send(res);
   });
 
-  google = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+  google = asyncHandler(async (req, res, _next) => {
     // Implement Google OAuth logic here using authService
     const parseData = validateSchema(GoogleLoginSchema, req.query);
 
@@ -86,7 +85,7 @@ class AuthController {
     return new OkResponse({ accessToken, refreshToken }).send(res);
   });
 
-  refreshToken = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+  refreshToken = asyncHandler(async (req, res, _next) => {
     // Implement refresh token logic here using authService
     validateSchema(RefershTokenSchema, req.body);
 
@@ -98,7 +97,7 @@ class AuthController {
     return new OkResponse({ accessToken, refreshToken }).send(res);
   });
 
-  logout = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+  logout = asyncHandler(async (req, res, _next) => {
     // Implement logout logic here using authService
 
     res.clearCookie('access_token');
@@ -107,7 +106,7 @@ class AuthController {
     return new AcceptedResponse('Logged out successfully.').send(res);
   });
 
-  forgotPassword = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+  forgotPassword = asyncHandler(async (req, res, _next) => {
     // Implement forgot password logic here using authService
 
     const parseData = validateSchema(ForgotPasswordSchema, req.body);
@@ -117,7 +116,7 @@ class AuthController {
     return new AcceptedResponse('Password reset OTP sent to email.').send(res);
   });
 
-  verifyEmail = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+  verifyEmail = asyncHandler(async (req, res, _next) => {
     // Implement email verification logic here using authService
     const parseData = validateSchema(VerifyEmailSchema, req.body);
 
@@ -126,7 +125,7 @@ class AuthController {
     return new AcceptedResponse('Email verified successfully.').send(res);
   });
 
-  resetPassword = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+  resetPassword = asyncHandler(async (req, res, _next) => {
     // Implement reset password logic here using authService
 
     const parseData = validateSchema(ResetPasswordSchema, req.body);

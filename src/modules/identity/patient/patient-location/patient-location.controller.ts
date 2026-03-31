@@ -2,14 +2,13 @@ import { isAuth } from '@/core/middlewares/isAuth';
 import { AcceptedResponse, CreatedResponse, OkResponse } from '@/core/response/ApiResponse';
 import { asyncHandler } from '@/core/response/responseHandler';
 import { validateSchema } from '@/core/utils/validateSchema';
-import type { NextFunction, Request, Response } from 'express';
 import { ObjectIdSchema } from '../../auth/auth.type';
 import { PatientLocationSchema, UpdatePatientLocationSchema } from '../patient.type';
 import { patientLocationService } from './patient-location.service';
 
 class PatientLocationController {
   // Implement patient location-specific endpoints here
-  createPatientLocation = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+  createPatientLocation = asyncHandler(async (req, res, _next) => {
     // Placeholder for create patient location endpoint logic
     isAuth(req);
     const parseData = validateSchema(PatientLocationSchema, req.body);
@@ -19,14 +18,14 @@ class PatientLocationController {
     return new CreatedResponse('Patient location created successfully').send(res);
   });
 
-  getPatientLocations = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+  getPatientLocations = asyncHandler(async (req, res, _next) => {
     // Placeholder for get patient location endpoint logic
     isAuth(req);
     const patientLocations = await patientLocationService.getPatientLocations(req.user.id);
     return new OkResponse(patientLocations).send(res);
   });
 
-  updatePatientLocation = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+  updatePatientLocation = asyncHandler(async (req, res, _next) => {
     // Placeholder for update patient location endpoint logic
     isAuth(req);
     const parseData = validateSchema(UpdatePatientLocationSchema, req.body);
@@ -36,7 +35,7 @@ class PatientLocationController {
     return new AcceptedResponse('Patient location updated successfully').send(res);
   });
 
-  deletePatientLocation = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+  deletePatientLocation = asyncHandler(async (req, res, _next) => {
     // Placeholder for delete patient location endpoint logic
     isAuth(req);
     const locationId = validateSchema(ObjectIdSchema, req.params.id);

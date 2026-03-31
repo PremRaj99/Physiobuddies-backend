@@ -1,14 +1,13 @@
 import { AcceptedResponse, CreatedResponse } from '@/core/response/ApiResponse';
 import { asyncHandler } from '@/core/response/responseHandler';
 import { validateSchema } from '@/core/utils/validateSchema';
-import { NextFunction, Request, Response } from 'express';
 import { TherapistFaqSchema, UpdateTherapistFaqSchema } from './therapistFaq.type';
 import therapistFaqService from './therapistFaq.service';
 import { isAuth } from '@/core/middlewares/isAuth';
 import { ObjectIdSchema } from '../../auth/auth.type';
 
 class TherapistFaqController {
-  createFaq = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+  createFaq = asyncHandler(async (req, res, _next) => {
     isAuth(req);
     const parseData = validateSchema(TherapistFaqSchema, req.body);
     const userId = req.user.id;
@@ -16,7 +15,7 @@ class TherapistFaqController {
     return new CreatedResponse('Faq created successfully').send(res);
   });
 
-  updateFaq = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+  updateFaq = asyncHandler(async (req, res, _next) => {
     isAuth(req);
     const articleId = validateSchema(ObjectIdSchema, req.params.id);
     const userId = req.user.id;
@@ -26,7 +25,7 @@ class TherapistFaqController {
     return new AcceptedResponse('Faq updated successfully').send(res);
   });
 
-  deleteFaq = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+  deleteFaq = asyncHandler(async (req, res, _next) => {
     isAuth(req);
     const articleId = validateSchema(ObjectIdSchema, req.params.id);
     const userId = req.user.id;

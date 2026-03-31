@@ -1,14 +1,13 @@
 import { AcceptedResponse, CreatedResponse } from '@/core/response/ApiResponse';
 import { asyncHandler } from '@/core/response/responseHandler';
 import { validateSchema } from '@/core/utils/validateSchema';
-import { NextFunction, Request, Response } from 'express';
 import { TherapistArticleSchema, UpdateTherapistArticleSchema } from './therapistArticle.type';
 import therapistArticleService from './therapistArticle.service';
 import { isAuth } from '@/core/middlewares/isAuth';
 import { ObjectIdSchema } from '../../auth/auth.type';
 
 class TherapistArticleController {
-  createArticle = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+  createArticle = asyncHandler(async (req, res, _next) => {
     isAuth(req);
     const parseData = validateSchema(TherapistArticleSchema, req.body);
     const userId = req.user.id;
@@ -16,7 +15,7 @@ class TherapistArticleController {
     return new CreatedResponse('Article created successfully').send(res);
   });
 
-  updateArticle = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+  updateArticle = asyncHandler(async (req, res, _next) => {
     isAuth(req);
     const articleId = validateSchema(ObjectIdSchema, req.params.id);
     const userId = req.user.id;
@@ -26,7 +25,7 @@ class TherapistArticleController {
     return new AcceptedResponse('Article updated successfully').send(res);
   });
 
-  deleteArticle = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+  deleteArticle = asyncHandler(async (req, res, _next) => {
     isAuth(req);
     const articleId = validateSchema(ObjectIdSchema, req.params.id);
     const userId = req.user.id;

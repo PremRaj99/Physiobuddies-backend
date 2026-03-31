@@ -1,4 +1,3 @@
-import { Response, Request, NextFunction } from 'express';
 import { asyncHandler } from '@/core/response/responseHandler';
 import sessionReviewService from './treatmentSessionReview.service';
 import { OkResponse, AcceptedResponse } from '@/core/response/ApiResponse';
@@ -7,7 +6,7 @@ import { ObjectIdSchema } from '@/modules/identity/auth/auth.type';
 import { validateSchema } from '@/core/utils/validateSchema';
 
 class TreatmentSessionReviewController {
-  submitReview = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+  submitReview = asyncHandler(async (req, res, _next) => {
     isAuth(req);
     const sessionId = validateSchema(ObjectIdSchema, req.params.id);
     const { rating, comment } = req.body;
@@ -16,7 +15,7 @@ class TreatmentSessionReviewController {
     return new AcceptedResponse('Review submitted successfully').send(res);
   });
 
-  getReviews = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+  getReviews = asyncHandler(async (req, res, _next) => {
     const sessionId = validateSchema(ObjectIdSchema, req.params.id);
     const reviews = await sessionReviewService.getReviews(sessionId);
     return new OkResponse(reviews).send(res);

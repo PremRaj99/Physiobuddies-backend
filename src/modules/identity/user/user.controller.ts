@@ -1,5 +1,4 @@
 import { asyncHandler } from '@/core/response/responseHandler';
-import type { NextFunction, Request, Response } from 'express';
 import { userService } from './user.service';
 import { isAuth } from '@/core/middlewares/isAuth';
 import { AcceptedResponse, OkResponse } from '@/core/response/ApiResponse';
@@ -7,7 +6,7 @@ import { validateSchema } from '@/core/utils/validateSchema';
 import { ChangePasswordSchema, UpdateAvatarSchema, UpdateUserSchema } from './user.type';
 
 class UserController {
-  getInfo = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+  getInfo = asyncHandler(async (req, res, _next) => {
     // Implementation for getting user information
     isAuth(req);
 
@@ -15,7 +14,7 @@ class UserController {
     return new OkResponse(user).send(res);
   });
 
-  updateInfo = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+  updateInfo = asyncHandler(async (req, res, _next) => {
     // Implementation for updating user information
     isAuth(req);
 
@@ -25,7 +24,7 @@ class UserController {
     return new AcceptedResponse('User information updated successfully').send(res);
   });
 
-  updateAvatar = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+  updateAvatar = asyncHandler(async (req, res, _next) => {
     // Implementation for updating user avatar
 
     isAuth(req);
@@ -35,7 +34,7 @@ class UserController {
     return new AcceptedResponse('User avatar updated successfully').send(res);
   });
 
-  changePassword = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+  changePassword = asyncHandler(async (req, res, _next) => {
     // Implementation for changing user password
 
     isAuth(req);

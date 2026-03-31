@@ -1,7 +1,6 @@
 import { asyncHandler } from '../response/responseHandler';
-import type { Request, Response, NextFunction } from 'express';
 import { ForbiddenError } from '../errors/ApiError';
-export const PatientOnly = asyncHandler((req: Request, _res: Response, next: NextFunction) => {
+export const PatientOnly = asyncHandler((req, _res, next) => {
   if (!req.user) {
     throw new ForbiddenError();
   }

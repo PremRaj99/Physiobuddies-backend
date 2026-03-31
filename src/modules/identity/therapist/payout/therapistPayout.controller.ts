@@ -1,4 +1,3 @@
-import { Request, Response, NextFunction } from 'express';
 import { asyncHandler } from '@/core/response/responseHandler';
 import therapistPayoutService from './therapistPayout.service';
 import { OkResponse, AcceptedResponse } from '@/core/response/ApiResponse';
@@ -8,7 +7,7 @@ import { ObjectIdSchema } from '../../auth/auth.type';
 import { RequestPayoutSchema } from './therapistPayout.types';
 
 class TherapistPayoutController {
-  requestPayout = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+  requestPayout = asyncHandler(async (req, res, _next) => {
     isAuth(req);
     const userId = req.user.id;
     const parseData = validateSchema(RequestPayoutSchema, req.body);
@@ -16,14 +15,14 @@ class TherapistPayoutController {
     return new AcceptedResponse('Payout requested successfully').send(res);
   });
 
-  getPayouts = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+  getPayouts = asyncHandler(async (req, res, _next) => {
     isAuth(req);
     const userId = req.user.id;
     const payouts = await therapistPayoutService.getPayouts(userId);
     return new OkResponse(payouts).send(res);
   });
 
-  getPayoutById = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+  getPayoutById = asyncHandler(async (req, res, _next) => {
     isAuth(req);
     const userId = req.user.id;
     const payoutId = validateSchema(ObjectIdSchema, req.params.id);
