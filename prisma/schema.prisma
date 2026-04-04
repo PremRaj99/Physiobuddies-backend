@@ -7,7 +7,7 @@ generator client {
 
 datasource db {
   provider = "mongodb"
-  url = env("DATABASE_URL")
+  url      = env("DATABASE_URL")
 }
 
 // ----------------------------------------------------------------------
@@ -170,6 +170,7 @@ model User {
   // System
   activities    Activity[]
   notifications Notification[]
+  complaint     Complaint[]
 
   @@unique([email, deletedAt])
   @@index([phone])
@@ -236,8 +237,8 @@ model PatientDetail {
 }
 
 model PatientReview {
-  id            String @id @default(auto()) @map("_id") @db.ObjectId
-  therapistId   String @db.ObjectId
+  id              String @id @default(auto()) @map("_id") @db.ObjectId
+  therapistId     String @db.ObjectId
   treatmentPlanId String @db.ObjectId
 
   comment String
@@ -308,14 +309,14 @@ model Therapist {
   userId      String @unique @db.ObjectId // 1:1 Link to User
   therapistId String // Public Business ID
 
-  location       Json // Current GPS { lat: number, lng: number }
-  displayAddress String
-  price          Float
-  priceAlt       Float?
-  commissionRate Float
+  location               Json // Current GPS { lat: number, lng: number }
+  displayAddress         String
+  price                  Float
+  priceAlt               Float?
+  commissionRate         Float
   updateCommissionRateAt DateTime?
 
-  rating         Float?
+  rating Float?
 
   gender Gender
   mode   TreatmentMode
@@ -332,7 +333,7 @@ model Therapist {
   meta             TherapistMeta?
   locations        TherapistLocation[]
   accounts         AccountDetail[]
-  treatmentPlans    TreatmentPlan[]    @relation("TherapistTreatmentPlans")
+  treatmentPlans   TreatmentPlan[]     @relation("TherapistTreatmentPlans")
   commissions      Commission[]
   walletEntries    TherapistWallet[]
   payouts          Payout[]
@@ -454,23 +455,22 @@ model TreatmentPlan {
 }
 
 model TreatmentSession {
-  id            String @id @default(auto()) @map("_id") @db.ObjectId
+  id              String @id @default(auto()) @map("_id") @db.ObjectId
   treatmentPlanId String @db.ObjectId
-  reservationId String @unique @db.ObjectId
+  reservationId   String @unique @db.ObjectId
 
-  date           DateTime
-  status         SessionStatus
-  mode           TreatmentMode
+  date   DateTime
+  status SessionStatus
+  mode   TreatmentMode
 
   // Fraud Prevention & Logistics
-  startAt   DateTime?
+  startAt DateTime?
 
   cancelledBy        ReviewedBy?
   cancelledAt        DateTime?
   cancellationReason String?
 
-
-  endAt   DateTime?
+  endAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -478,18 +478,18 @@ model TreatmentSession {
   // add redundant fields for easier querying and reporting
   therapistSnapshot     Json
   patientDetailSnapshot Json
-  priceAtBooking          Float
-  addressSnapshot         Json?
+  priceAtBooking        Float
+  addressSnapshot       Json?
 
   // Relations
-  treatmentPlan TreatmentPlan             @relation(fields: [treatmentPlanId], references: [id])
-  bill        TreatmentSessionBill?
-  review      TreatmentSessionReview?
-  couponUsage CouponUsage?
+  treatmentPlan TreatmentPlan           @relation(fields: [treatmentPlanId], references: [id])
+  bill          TreatmentSessionBill?
+  review        TreatmentSessionReview?
+  couponUsage   CouponUsage?
 
   // Linked Reservation (Which slot was used)
   reservation              SlotReservation @relation(fields: [reservationId], references: [id])
-  treatmentSessionReviewId String?          @db.ObjectId
+  treatmentSessionReviewId String?         @db.ObjectId
 
   @@index([treatmentPlanId])
 }
@@ -574,13 +574,13 @@ model SlotReservation {
 // ----------------------------------------------------------------------
 
 model Payment {
-  id     String @id @default(auto()) @map("_id") @db.ObjectId
-  userId String @db.ObjectId
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String @db.ObjectId
   invoiceId String @unique
 
   gatewayPaymentId String?
   gatewayOrderId   String?
-  webhookEventId   String?  @unique
+  webhookEventId   String? @unique
   processing       Boolean @default(false)
 
   status PaymentStatus
@@ -843,9 +843,9 @@ model BlogLike {
 // ----------------------------------------------------------------------
 
 model TherapistReview {
-  id            String @id @default(auto()) @map("_id") @db.ObjectId
-  patientId     String @db.ObjectId
-  therapistId   String @db.ObjectId
+  id              String @id @default(auto()) @map("_id") @db.ObjectId
+  patientId       String @db.ObjectId
+  therapistId     String @db.ObjectId
   treatmentPlanId String @db.ObjectId
 
   rating  Float
@@ -901,6 +901,7 @@ model Notification {
 
   title       String
   description String
+  isRead      Boolean
   priority    NotificationPriority
 
   createdAt DateTime @default(now())
@@ -916,4 +917,36 @@ model SystemConfig {
   key       String   @unique
   value     String
   updatedAt DateTime @updatedAt
+}
+
+// ----------------------------------------
+// Contact and Complaint
+// ----------------------------------------
+
+enum ContactStatus {
+  pending
+  processing
+  completed
+  rejected
+}
+
+model contact {
+  id        String        @id @default(auto()) @map("_id") @db.ObjectId
+  email     String
+  mobile    String
+  type      String
+  status    ContactStatus
+  reply     String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model Complaint {
+  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String        @unique @db.ObjectId
+  type        String
+  description String
+  status      ContactStatus
+  reply       String?
+  user        User          @relation(fields: [userId], references: [id])
 }
