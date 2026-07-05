@@ -224,10 +224,12 @@ model PatientDetail {
   id        String @id @default(auto()) @map("_id") @db.ObjectId
   patientId String @db.ObjectId
 
-  name   String
-  dob    DateTime
-  gender Gender
-  phone  String
+  name     String
+  dob      DateTime
+  gender   Gender
+  phone    String
+  heightCm  Float?
+  weightKg  Float?
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -293,11 +295,8 @@ model TherapistLocation {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  // Polymorphic-style relations
-  therapist Therapist? @relation(fields: [therapistId], references: [id])
-
-  // If a therapist meta uses this location
-  linkedTherapistMetas TherapistMeta[]
+  // Back relation to TherapistMeta (defined on TherapistMeta.location)
+  therapistMeta TherapistMeta?
 }
 
 // ----------------------------------------------------------------------
@@ -331,15 +330,14 @@ model Therapist {
   user User @relation(fields: [userId], references: [id])
 
   meta             TherapistMeta?
-  locations        TherapistLocation[]
   accounts         AccountDetail[]
-  treatmentPlans   TreatmentPlan[]     @relation("TherapistTreatmentPlans")
+  treatmentPlans   TreatmentPlan[]    @relation("TherapistTreatmentPlans")
   commissions      Commission[]
   walletEntries    TherapistWallet[]
   payouts          Payout[]
   articles         TherapistArticle[]
   faqs             TherapistFAQ[]
-  reviewsReceived  TherapistReview[]   @relation("TherapistReceivedReviews")
+  reviewsReceived  TherapistReview[]  @relation("TherapistReceivedReviews")
   subscriptions    Subscription[]
   slots            TherapistSlot[]
   leaves           TherapistLeave[]
@@ -356,7 +354,7 @@ model Therapist {
 model TherapistMeta {
   id          String @id @default(auto()) @map("_id") @db.ObjectId
   therapistId String @unique @db.ObjectId
-  locationId  String @db.ObjectId
+  locationId  String @unique @db.ObjectId
 
   dob                      DateTime
   experience               Int
@@ -368,8 +366,8 @@ model TherapistMeta {
   resume                   String?
   professionalCertificates String[]
 
-  therapist Therapist         @relation(fields: [therapistId], references: [id])
-  location  TherapistLocation @relation(fields: [locationId], references: [id])
+  therapist Therapist          @relation(fields: [therapistId], references: [id])
+  location  TherapistLocation? @relation(fields: [locationId], references: [id])
 }
 
 model AccountDetail {
@@ -383,8 +381,8 @@ model AccountDetail {
   ifsc              String?
   upi               String?
 
-  isDefault      Boolean          @default(false)
-  payoutMethodId PaymentMethodId?
+  isDefault    Boolean          @default(false)
+  payoutMethod PaymentMethodId?
 
   deletedAt DateTime?
 
@@ -446,9 +444,10 @@ model TreatmentPlan {
   therapistSnapshot      Json // Store therapist details at time of booking for reporting
 
   // Relations
-  patient   Patient            @relation("PatientTreatmentPlans", fields: [patientId], references: [id])
-  therapist Therapist          @relation("TherapistTreatmentPlans", fields: [therapistId], references: [id])
-  sessions  TreatmentSession[]
+  patient            Patient             @relation("PatientTreatmentPlans", fields: [patientId], references: [id])
+  therapist          Therapist           @relation("TherapistTreatmentPlans", fields: [therapistId], references: [id])
+  sessions           TreatmentSession[]
+  clinicalAssessment ClinicalAssessment?
 
   @@index([patientId])
   @@index([therapistId])
@@ -459,9 +458,11 @@ model TreatmentSession {
   treatmentPlanId String @db.ObjectId
   reservationId   String @unique @db.ObjectId
 
-  date   DateTime
-  status SessionStatus
-  mode   TreatmentMode
+  date        DateTime
+  status      SessionStatus
+  mode        TreatmentMode
+  condition   String
+  DescribedAs String?
 
   // Fraud Prevention & Logistics
   startAt DateTime?
@@ -947,6 +948,132 @@ model Complaint {
   type        String
   description String
   status      ContactStatus
-  reply       String?
+  reply       Reply[]
   user        User          @relation(fields: [userId], references: [id])
+}
+
+model Reply {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  role        ReplyRole
+  message     String
+  complaintId String    @db.ObjectId
+  complaint   Complaint @relation(fields: [complaintId], references: [id])
+}
+
+enum ReplyRole {
+  user
+  support
+}
+
+// ----------------------------------------------------------------------
+// CLINICAL ASSESSMENT DOMAIN (MongoDB Composite Types & Model)
+// ----------------------------------------------------------------------
+
+enum AssessmentType {
+  ORTHO
+  POST_SURGICAL
+  SPORTS
+  NEURO
+  GERIATRIC
+  CARDIOPULMONARY
+  GENERAL
+}
+
+enum DurationOfSymptoms {
+  LESS_THAN_ONE_WEEK
+  ONE_TO_FOUR_WEEKS
+  ONE_TO_THREE_MONTHS
+  THREE_TO_SIX_MONTHS
+  GREATER_THAN_SIX_MONTHS
+}
+
+enum ROM {
+  Full
+  Mild_Restriction
+  Moderate_Restriction
+  Severe_Restriction
+}
+
+enum MuscleStrength {
+  Normal
+  Mild_Weakness
+  Moderate_Weakness
+  Severe_Weakness
+}
+
+enum FallRisk {
+  Low
+  Moderate
+  High
+}
+
+enum VisitFrequency {
+  Daily
+  Alternate_Days
+  Three_Times_Week
+  Two_Times_Week
+  Weekly
+}
+
+type MobilityDetails {
+  mobilityStatus        String?
+  assistiveDevice       String?
+  fallRisk              FallRisk?
+  functionalLimitations String[]
+}
+
+type SurgicalDetails {
+  dateOfSurgery DateTime?
+  surgeryType   String?
+}
+
+type SportsDetails {
+  sportPlayed       String?
+  mechanismOfInjury String?
+}
+
+type NeurologicalDetails {
+  cognitiveStatus String?
+  muscleTone      String?
+}
+
+type CardiopulmonaryVitals {
+  heartRateBpm      Int?
+  bloodPressureSys  Int?
+  bloodPressureDia  Int?
+  spo2Percentage    Int?
+  oxygenSupportType String?
+}
+
+model ClinicalAssessment {
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  treatmentPlanId String        @unique @db.ObjectId
+  treatmentPlan   TreatmentPlan @relation(fields: [treatmentPlanId], references: [id], onDelete: Cascade)
+
+  // STEP 1: Core Universal Fields
+  assessmentType      AssessmentType
+  chiefComplaint      String[]
+  durationOfSymptoms  DurationOfSymptoms
+  painScore           Int
+  painCharacteristics String[]
+  rom                 ROM
+  muscleStrength      MuscleStrength
+
+  // STEP 2: Conditional & Specific Fields (Composite Types)
+  mobilityDetails       MobilityDetails
+  surgicalDetails       SurgicalDetails?
+  sportsDetails         SportsDetails?
+  neurologicalDetails   NeurologicalDetails?
+  cardiopulmonaryVitals CardiopulmonaryVitals?
+
+  // STEP 3: Treatment & Recommendations
+  problemsIdentified String[]
+  treatmentPlanItems String[]
+  visitFrequency     VisitFrequency
+  hepGiven           Boolean
+  therapistNotes     String?
+  documentUrls       String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
