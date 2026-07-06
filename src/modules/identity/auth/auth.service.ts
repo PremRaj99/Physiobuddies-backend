@@ -18,7 +18,7 @@ class AuthService {
     return await prisma.user.findFirst({
       where: {
         email: email,
-        deletedAt: null,
+        deletedAt: { isSet: false },
         status: 'active',
       },
     });

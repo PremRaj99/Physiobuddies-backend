@@ -6,7 +6,7 @@ class AdminUserService {
     const users = await prisma.user.findMany({
       where: {
         status: 'active',
-        deletedAt: null,
+        deletedAt: { isSet: false },
       },
       select: {
         id: true,

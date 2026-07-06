@@ -18,8 +18,32 @@ class UserService {
   };
 
   getInfo = async (userId: string) => {
-    // Implementation to get user information
-    const user = await this.getUserById(userId);
+    const user = await prisma.user.findFirst({
+      where: { id: userId, deletedAt: { isSet: false }, status: 'active' },
+      include: {
+        therapistProfile: {
+          include: {
+            meta: true,
+            accounts: true,
+            slots: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundError('User not found');
+    }
+
+    let therapistStatus = null;
+    if (user.role === 'therapist' && user.therapistProfile) {
+      const therapist = user.therapistProfile;
+      therapistStatus = {
+        isOnboardingFilled: !!therapist.meta,
+        isVerified: !!therapist.verifiedAt,
+        isFinalOnboardingFilled: therapist.accounts.length > 0 && therapist.slots.length > 0,
+      };
+    }
 
     return {
       id: user.id,
@@ -28,6 +52,7 @@ class UserService {
       role: user.role,
       phone: user.phone,
       createdAt: user.createdAt,
+      therapistStatus,
     };
   };
 
