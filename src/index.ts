@@ -42,7 +42,7 @@ app.use(express.urlencoded({ limit: '100mb', extended: true }));
 app.use('/api/v1', router);
 app.use(errorHandlerMiddleware);
 
-const clientPath = path.join(__dirname, '../../client/dist');
+const clientPath = path.join(__dirname, '../../client2/dist');
 
 if (clientPath && NODE_ENV === 'production') {
   app.use(express.static(clientPath));
