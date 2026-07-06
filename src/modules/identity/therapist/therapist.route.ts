@@ -1,11 +1,12 @@
 import { Router } from 'express';
-import { therapistController } from './therapist.controller';
 import { therapistArticleRouter } from './article/therapistArticle.route';
 import { therapistEarningRouter } from './earning/therapistEarning.route';
 import { therapistFaqRouter } from './faq/therapistFaq.route';
+import { therapistMetaRouter } from './meta/therapistMeta.route';
 import { therapistPayoutRouter } from './payout/therapistPayout.route';
-import { therapistWalletRouter } from './wallet/therapistWallet.route';
 import { therapistSessionRouter } from './session/therapistSession.route';
+import { therapistController } from './therapist.controller';
+import { therapistWalletRouter } from './wallet/therapistWallet.route';
 
 export const therapistRouter = Router();
 
@@ -15,6 +16,7 @@ therapistRouter.use('/faqs', therapistFaqRouter);
 therapistRouter.use('/payout', therapistPayoutRouter);
 therapistRouter.use('/sessions', therapistSessionRouter);
 therapistRouter.use('/wallet', therapistWalletRouter);
+therapistRouter.use('/meta', therapistMetaRouter);
 
 therapistRouter.get('/', therapistController.getAllTherapists);
 therapistRouter.get('/:id', therapistController.getTherapistById);

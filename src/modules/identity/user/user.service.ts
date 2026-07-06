@@ -35,6 +35,7 @@ class UserService {
       throw new NotFoundError('User not found');
     }
 
+    let therapistProfileData = null;
     let therapistStatus = null;
     if (user.role === 'therapist' && user.therapistProfile) {
       const therapist = user.therapistProfile;
@@ -42,6 +43,12 @@ class UserService {
         isOnboardingFilled: !!therapist.meta,
         isVerified: !!therapist.verifiedAt,
         isFinalOnboardingFilled: therapist.accounts.length > 0 && therapist.slots.length > 0,
+      };
+      therapistProfileData = {
+        id: therapist.id,
+        about: therapist.about,
+        displayAddress: therapist.displayAddress,
+        location: therapist.location,
       };
     }
 
@@ -51,8 +58,10 @@ class UserService {
       name: user.name,
       role: user.role,
       phone: user.phone,
+      image: user.image,
       createdAt: user.createdAt,
       therapistStatus,
+      therapistProfile: therapistProfileData,
     };
   };
 
