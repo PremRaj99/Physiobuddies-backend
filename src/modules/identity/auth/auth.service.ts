@@ -163,6 +163,8 @@ class AuthService {
         patientId: generatePatientId(),
       },
     });
+
+    return user;
   };
 
   signupPhysiotherapist = async (
@@ -213,6 +215,8 @@ class AuthService {
         commissionRate: 0.2, // 20% commission
       },
     });
+
+    return user;
   };
 
   google = async (code: string, req: Request) => {

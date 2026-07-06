@@ -1,7 +1,6 @@
 export const allowedDomains = [
-  'https://kiratofficial.com',
-  'https://admin.kiratofficial.com',
-  'http://localhost:3009',
-  'http://localhost:3010',
-  'https://xtragateway.site',
+  'https://physiobuddies.in',
+  'https://physiobuddies.com',
+  'http://localhost:5173',
+  'http://localhost:4173',
 ];

@@ -13,7 +13,7 @@ import {
   VerifyEmailSchema,
 } from './auth.type';
 import { setCookie } from './setCookie';
-import { AcceptedResponse, CreatedResponse, OkResponse } from '@/core/response/ApiResponse';
+import { AcceptedResponse, OkResponse, ApiResponse } from '@/core/response/ApiResponse';
 
 class AuthController {
   login = asyncHandler(async (req, res, _next) => {
@@ -44,7 +44,7 @@ class AuthController {
     // Implement signup logic here using authService
     const parseData = validateSchema(SignupPatientSchema, req.body);
 
-    await authService.signupPatient(
+    const user = await authService.signupPatient(
       parseData.name,
       parseData.email,
       parseData.token,
@@ -52,14 +52,23 @@ class AuthController {
       parseData.password,
     );
 
-    return new CreatedResponse('User registered successfully.').send(res);
+    const { accessToken, refreshToken } = await authService.generateTokens(user, req);
+
+    setCookie(res, 'access_token', accessToken);
+    setCookie(res, 'refresh_token', refreshToken);
+
+    return new ApiResponse(
+      201,
+      { accessToken, refreshToken },
+      'User registered successfully.',
+    ).send(res);
   });
 
   signupPhysiotherapist = asyncHandler(async (req, res, _next) => {
     // Implement signup logic here using authService
     const parseData = validateSchema(SignupPhysiotherapistSchema, req.body);
 
-    await authService.signupPhysiotherapist(
+    const user = await authService.signupPhysiotherapist(
       parseData.name,
       parseData.email,
       parseData.token,
@@ -71,7 +80,16 @@ class AuthController {
       parseData.mode,
     );
 
-    return new CreatedResponse('Physiotherapist registered successfully.').send(res);
+    const { accessToken, refreshToken } = await authService.generateTokens(user, req);
+
+    setCookie(res, 'access_token', accessToken);
+    setCookie(res, 'refresh_token', refreshToken);
+
+    return new ApiResponse(
+      201,
+      { accessToken, refreshToken },
+      'Physiotherapist registered successfully.',
+    ).send(res);
   });
 
   google = asyncHandler(async (req, res, _next) => {

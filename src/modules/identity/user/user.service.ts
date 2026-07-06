@@ -7,7 +7,7 @@ import { updateInfoData } from './user.helper';
 class UserService {
   getUserById = async (id: string) => {
     const user = await prisma.user.findFirst({
-      where: { id, deletedAt: null, status: 'active' },
+      where: { id, deletedAt: { isSet: false }, status: 'active' },
     });
 
     if (!user) {
@@ -26,6 +26,7 @@ class UserService {
       email: user.email,
       name: user.name,
       role: user.role,
+      phone: user.phone,
       createdAt: user.createdAt,
     };
   };

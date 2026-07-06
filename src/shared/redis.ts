@@ -39,9 +39,10 @@ redisClient.on('reconnecting', () => {
 const initRedis = async () => {
   try {
     await redisClient.connect();
-    logger.info('Redis connection established');
+    console.log('Redis connection established');
   } catch (error) {
-    logger.error('Failed to connect to Redis:', error);
+    console.log('Failed to connect to Redis:', error);
+    process.exit(1);
   }
 };
 
