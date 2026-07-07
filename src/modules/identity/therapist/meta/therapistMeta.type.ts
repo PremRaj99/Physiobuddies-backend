@@ -1,17 +1,17 @@
 import z from 'zod';
 
 export const SubmitOnboardingSchema = z.object({
-  dob: z.string(),
-  displayAddress: z.string(),
-  about: z.string(),
-  experience: z.number(),
+  dob: z.string().min(1, 'Date of birth is required'),
+  displayAddress: z.string().min(1, 'Display address is required'),
+  about: z.string().min(1, 'About details are required'),
+  experience: z.number().min(0, 'Experience must be a positive number'),
   iapId: z.string().optional().nullable(),
   affiliation: z.string().optional().nullable(),
-  specializations: z.array(z.string()),
-  education: z.array(z.string()),
-  languages: z.array(z.string()),
-  resume: z.string().optional().nullable(),
-  certificates: z.array(z.string()).optional().nullable(),
+  specializations: z.array(z.string()).min(1, 'At least one specialization is required'),
+  education: z.array(z.string()).min(1, 'At least one education qualification is required'),
+  languages: z.array(z.string()).min(1, 'At least one language is required'),
+  resume: z.string().min(1, 'Resume is required'),
+  certificates: z.array(z.string()).min(1, 'At least one certificate is required'),
 });
 
 export type SubmitOnboardingDTO = z.infer<typeof SubmitOnboardingSchema>;
