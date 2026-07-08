@@ -121,9 +121,11 @@ export const registerApiRoute = (config: RouteConfig) => {
     requestPayload.params = config.params;
   }
 
+  const swaggerPath = config.path.replace(/:([a-zA-Z0-9_]+)/g, '{$1}');
+
   registry.registerPath({
     method: config.method,
-    path: config.path,
+    path: swaggerPath,
     tags: config.tags,
     summary: config.summary,
     // Safely add description

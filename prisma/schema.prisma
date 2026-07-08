@@ -339,7 +339,7 @@ model Therapist {
   faqs             TherapistFAQ[]
   reviewsReceived  TherapistReview[]  @relation("TherapistReceivedReviews")
   subscriptions    Subscription[]
-  slots            TherapistSlot[]
+  slots            TherapistSlot?
   leaves           TherapistLeave[]
   slotReservations SlotReservation[]
 
@@ -499,32 +499,17 @@ model TreatmentSession {
 // SCHEDULING & SLOTS
 // ----------------------------------------------------------------------
 
-model TimeSlotTemplate {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
-
-  startTime    Int // Minutes from midnight
-  endTime      Int
-  slotDuration Int // minutes
-  isActive     Boolean @default(true)
-
-  createdAt DateTime @default(now())
-
-  // Relations
-  reservations SlotReservation[]
-}
-
 model TherapistSlot {
   id          String @id @default(auto()) @map("_id") @db.ObjectId
-  therapistId String @db.ObjectId
+  therapistId String @unique @db.ObjectId
 
-  availableDays String[] // ["mon", "wed"]
+  // e.g. { "sunday": ["morning"], "monday": ["morning", "evening"], ... }
+  schedule Json
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  therapist    Therapist         @relation(fields: [therapistId], references: [id])
-  reservations SlotReservation[]
-
-  @@index([therapistId])
+  therapist Therapist @relation(fields: [therapistId], references: [id])
 }
 
 model TherapistLeave {
@@ -547,26 +532,22 @@ model SlotReservation {
   therapistId String  @db.ObjectId
   patientId   String? @db.ObjectId
 
-  therapistSlotId    String? @db.ObjectId
-  timeSlotTemplateId String  @db.ObjectId
-  treatmentSessionId String? @unique @db.ObjectId // Becomes linked when session is created
+  startHour Int // 6-21 (hour of day the slot starts)
 
   startTime DateTime
   endTime   DateTime
 
   date      DateTime
   status    ReservationStatus
-  expiresAt DateTime? // For "hold" status
+  expiresAt DateTime? // For "hold" status — null for booked/blocked
   deletedAt DateTime?
 
   // Relations
   therapist        Therapist         @relation(fields: [therapistId], references: [id])
-  timeSlotTemplate TimeSlotTemplate  @relation(fields: [timeSlotTemplateId], references: [id])
   patient          Patient?          @relation(fields: [patientId], references: [id])
-  therapistSlot    TherapistSlot?    @relation(fields: [therapistSlotId], references: [id])
   treatmentSession TreatmentSession?
 
-  @@unique([therapistId, date, timeSlotTemplateId])
+  @@unique([therapistId, date, startHour])
   @@index([patientId])
 }
 

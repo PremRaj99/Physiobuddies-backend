@@ -28,7 +28,7 @@ class PatientLocationService {
 
   getPatientLocations = async (userId: string) => {
     const data = await prisma.patientLocation.findMany({
-      where: { deletedAt: null, patient: { userId } },
+      where: { deletedAt: { isSet: false }, patient: { userId } },
       orderBy: { updatedAt: 'desc' },
     });
 

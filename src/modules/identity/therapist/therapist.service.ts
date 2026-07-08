@@ -1,6 +1,13 @@
 import prisma from '@/config/prisma';
+import {
+  getSlotsForSchedule,
+  MIN_BOOKING_LEAD_MINUTES,
+  SLOT_DURATION,
+} from '@/core/constants/slots';
 import { NotFoundError } from '@/core/errors/ApiError';
 import { convertISTRangeToUTC } from '@/core/utils/time-zone';
+import { SlotManager } from '@/modules/treatment-lifecycle/reservation/slotManagement';
+import redisClient from '@/shared/redis';
 import { addDays } from 'date-fns';
 import { calculateDistance } from './calculateDistance';
 import { TherapistQueryDTO } from './therapist.type';
@@ -8,7 +15,7 @@ import { TherapistQueryDTO } from './therapist.type';
 class TherapistService {
   getTherapistByUserId = async (userId: string) => {
     const therapist = await prisma.therapist.findUnique({
-      where: { userId, deletedAt: null },
+      where: { userId, deletedAt: { isSet: false } },
     });
     if (!therapist) throw new NotFoundError('Therapist not found');
     return therapist;
@@ -123,7 +130,7 @@ class TherapistService {
 
   getTherapistById = async (therapistId: string, location: { lat?: number; lng?: number }) => {
     const therapist = await prisma.therapist.findUnique({
-      where: { id: therapistId, deletedAt: null },
+      where: { id: therapistId, deletedAt: { isSet: false } },
       include: {
         user: { select: { name: true, image: true } },
         meta: { select: { experience: true, specialization: true } },
@@ -244,18 +251,17 @@ class TherapistService {
       addDays(now, 2),
     );
 
+    // Construct slot hold keys for all 16 slots of the 3 days to keep queries parallel
+    const { slotKeys, keyToSlotMap } = SlotManager.getSlotHoldKeys(therapistId, todayStart, 3);
+
     // 2. Parallel Fetch
-    const [therapistSlot, templates, reservations, leaves] = await Promise.all([
-      prisma.therapistSlot.findFirst({ where: { therapistId } }),
-      prisma.timeSlotTemplate.findMany({
-        where: { isActive: true },
-        orderBy: { startTime: 'asc' },
-      }),
+    const [therapistSlot, reservations, leaves, redisHolds] = await Promise.all([
+      prisma.therapistSlot.findUnique({ where: { therapistId } }),
       prisma.slotReservation.findMany({
         where: {
           therapistId,
           date: { gte: todayStart, lte: threeDaysEnd },
-          deletedAt: null,
+          deletedAt: { isSet: false },
         },
       }),
       prisma.therapistLeave.findMany({
@@ -265,65 +271,88 @@ class TherapistService {
           endDate: { gte: todayStart },
         },
       }),
+      redisClient.mGet(slotKeys),
     ]);
 
     if (!therapistSlot) return [];
 
-    // 3. Create a Map for Reservations: Key is "YYYY-MM-DD_templateId" -> Status
+    const schedule = therapistSlot.schedule as Record<string, string[]>;
+
+    const heldSlotsMap = new Map<string, string>(); // Key: "YYYY-MM-DD_startHour" -> reservationId
+    slotKeys.forEach((key, index) => {
+      const val = redisHolds[index];
+      if (val) {
+        const slotInfo = keyToSlotMap.get(key);
+        if (slotInfo) {
+          heldSlotsMap.set(`${slotInfo.dateKey}_${slotInfo.startHour}`, val);
+        }
+      }
+    });
+
+    // 3. Create a Map for DB Reservations: Key is "YYYY-MM-DD_startHour" → reservation
     const reservationMap = new Map(
       reservations.map((r) => [
-        `${r.date.toISOString().split('T')[0]}_${r.timeSlotTemplateId}`,
-        r.status,
+        `${r.date.toISOString().split('T')[0]}_${r.startHour}`,
+        { status: r.status, expiresAt: r.expiresAt },
       ]),
     );
 
-    const availableDays = new Set(therapistSlot.availableDays);
     const result = [];
 
     for (let i = 0; i < 3; i++) {
       const currentDay = addDays(todayStart, i);
       const dateKey = currentDay.toISOString().split('T')[0]; // YYYY-MM-DD
 
-      if (!dateKey) {
-        break;
-      }
+      if (!dateKey) break;
 
-      // Formatting for your specific output "DD-MM-YYYY"
+      // Formatting for output "DD-MM-YYYY"
       const [year, month, day] = dateKey.split('-');
       const formattedDate = `${day}-${month}-${year}`;
 
-      const weekday = currentDay.toLocaleDateString('en-US', { weekday: 'short' }).toLowerCase();
+      const weekday = currentDay.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
 
-      // Check Leave: Compare UTC dates directly (assuming DB stores leave dates as UTC start/end)
+      // Check Leave: Compare UTC dates directly
       const isDayOnLeave = leaves.some(
         (leave) => currentDay >= leave.startDate && currentDay <= leave.endDate,
       );
 
+      if (isDayOnLeave) continue;
+
+      // Get available slots for this weekday based on therapist's schedule
+      const availableSlots = getSlotsForSchedule(schedule, weekday);
+      if (availableSlots.length === 0) continue;
+
       const daySlots = [];
 
-      // If it's a working day AND not on leave, process slots
-      if (availableDays.has(weekday) && !isDayOnLeave) {
-        for (const template of templates) {
-          const slotStart = new Date(currentDay);
-          slotStart.setHours(Math.floor(template.startTime / 60), template.startTime % 60, 0, 0);
+      for (const slotDef of availableSlots) {
+        const slotStart = new Date(currentDay);
+        slotStart.setHours(slotDef.startHour, slotDef.startMinute, 0, 0);
 
-          // 1. Skip if the time has already passed (for today)
-          if (slotStart <= now) continue;
+        // 1. Skip if the time has already passed (for today)
+        if (slotStart <= now) continue;
 
-          // 2. Determine Status
-          // Check if reservation exists in our Map
-          const bookingStatus = reservationMap.get(`${dateKey}_${template.id}`);
+        // 2. Skip if less than 1 hour lead time
+        const leadTimeMs = slotStart.getTime() - now.getTime();
+        if (leadTimeMs < MIN_BOOKING_LEAD_MINUTES * 60 * 1000) continue;
 
-          // Map status: if found, use DB status; otherwise, it's "open"
-          const status = bookingStatus ? bookingStatus.toLowerCase() : 'open';
+        // 3. Determine Status from reservation map or Redis holds
+        const reservation = reservationMap.get(`${dateKey}_${slotDef.startHour}`);
+        const redisHoldValue = heldSlotsMap.get(`${dateKey}_${slotDef.startHour}`);
 
-          daySlots.push({
-            templateId: template.id,
-            startTime: template.startTime,
-            endTime: template.endTime,
-            status: status, // "booked", "hold", "open", etc.
-          });
+        let status = 'open';
+        if (reservation) {
+          status = reservation.status.toLowerCase();
+        } else if (redisHoldValue) {
+          status = 'hold';
         }
+
+        daySlots.push({
+          startHour: slotDef.startHour,
+          startTime: slotDef.startHour * 60, // minutes from midnight
+          endTime: slotDef.startHour * 60 + SLOT_DURATION,
+          category: slotDef.category,
+          status, // "booked", "hold", "blocked", "open"
+        });
       }
 
       if (daySlots.length > 0) {

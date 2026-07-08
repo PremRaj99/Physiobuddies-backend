@@ -1,29 +1,41 @@
 import { AcceptedResponse, OkResponse } from '@/core/response/ApiResponse';
 import { asyncHandler } from '@/core/response/responseHandler';
-import reservationService from './reservation.service';
+import { reservationService } from './reservation.service';
 import { validateSchema } from '@/core/utils/validateSchema';
 import { ObjectIdSchema } from '@/modules/identity/auth/auth.type';
+import { HoldReservationSchema } from './reservation.type';
+import { patientService } from '@/modules/identity/patient/patient.service';
 
 class ReservationController {
-  // Implement reservation-related request handling here
   holdReservation = asyncHandler(async (req, res, _next) => {
-    // Logic to hold a reservation
-    const reservationData = req.body;
-    await reservationService.holdReservation(reservationData);
-    return new AcceptedResponse('Reservation held successfully').send(res);
+    // We assume the logged-in user is a patient. We get their patient profile ID.
+    const patient = await patientService.getPatientByUserId(req.user!.id);
+    const body = validateSchema(HoldReservationSchema, req.body);
+
+    const result = await reservationService.holdReservation({
+      patientId: patient.id,
+      therapistId: body.therapistId,
+      date: new Date(body.date),
+      startHour: body.startHour,
+    });
+    return new AcceptedResponse(result.message).send(res);
   });
-  getReservationById = asyncHandler(async (req, res, _next) => {
+
+  confirmReservation = asyncHandler(async (req, res, _next) => {
+    const patient = await patientService.getPatientByUserId(req.user!.id);
     const reservationId = validateSchema(ObjectIdSchema, req.params.id);
-    // Logic to get reservation details by ID
-    const reservationDetails = await reservationService.getReservationById(reservationId);
-    return new OkResponse(reservationDetails).send(res);
+
+    const result = await reservationService.confirmReservation(reservationId, patient.id);
+    return new OkResponse(result).send(res);
   });
+
   cancelReservation = asyncHandler(async (req, res, _next) => {
+    const patient = await patientService.getPatientByUserId(req.user!.id);
     const reservationId = validateSchema(ObjectIdSchema, req.params.id);
-    // Logic to cancel a reservation
-    await reservationService.cancelReservation(reservationId);
-    return new AcceptedResponse('Reservation canceled successfully').send(res);
+
+    const result = await reservationService.cancelReservation(reservationId, patient.id);
+    return new AcceptedResponse(result.message).send(res);
   });
 }
 
-export default new ReservationController();
+export const reservationController = new ReservationController();

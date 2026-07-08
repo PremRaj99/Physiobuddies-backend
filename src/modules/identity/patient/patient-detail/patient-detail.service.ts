@@ -21,7 +21,7 @@ class PatientDetailService {
     const details = await prisma.patientDetail.findMany({
       where: {
         patient: { userId },
-        deletedAt: null,
+        deletedAt: { isSet: false },
       },
     });
     return details.map((detail) => ({
@@ -37,13 +37,13 @@ class PatientDetailService {
     const updateData = updatePatientDetailData(data);
 
     await prisma.patientDetail.update({
-      where: { id: detailId, deletedAt: null, patient: { userId } },
+      where: { id: detailId, deletedAt: { isSet: false }, patient: { userId } },
       data: updateData,
     });
   };
   deletePatientDetail = async (detailId: string, userId: string) => {
     await prisma.patientDetail.update({
-      where: { id: detailId, deletedAt: null, patient: { userId } },
+      where: { id: detailId, deletedAt: { isSet: false }, patient: { userId } },
       data: { deletedAt: new Date() },
     });
   };

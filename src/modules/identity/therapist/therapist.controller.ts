@@ -1,9 +1,9 @@
-import type { NextFunction, Request, Response } from 'express';
-import { therapistService } from './therapist.service';
 import { OkResponse } from '@/core/response/ApiResponse';
 import { validateSchema } from '@/core/utils/validateSchema';
-import { TherapistQuerySchema } from './therapist.type';
+import type { NextFunction, Request, Response } from 'express';
 import { ObjectIdSchema } from '../auth/auth.type';
+import { therapistService } from './therapist.service';
+import { TherapistQuerySchema } from './therapist.type';
 
 class TherapistController {
   async getAllTherapists(req: Request, res: Response, _next: NextFunction) {

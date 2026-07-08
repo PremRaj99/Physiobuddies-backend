@@ -42,7 +42,7 @@ class UserService {
       therapistStatus = {
         isOnboardingFilled: !!therapist.meta,
         isVerified: !!therapist.verifiedAt,
-        isFinalOnboardingFilled: therapist.accounts.length > 0 && therapist.slots.length > 0,
+        isFinalOnboardingFilled: therapist.accounts.length > 0 && !!therapist.slots,
       };
       therapistProfileData = {
         id: therapist.id,

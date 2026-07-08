@@ -5,7 +5,7 @@ export const PhoneRegex = new RegExp(/^(\+\d{1,3}[ -]?)?\d{9,14}$/);
 export const ObjectIdSchema = z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid ObjectId format');
 
 export const ParamsObjectIdSchema = z.object({
-  id: ObjectIdSchema,
+  id: ObjectIdSchema.openapi({ param: { in: 'path', name: 'id' } }),
 });
 
 export const OtpTokenSchema = z

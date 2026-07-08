@@ -77,45 +77,57 @@ class TherapistMetaService {
       },
     });
 
-    // 2. Create bank account details
+    // 2. Create bank account details (save bank details only if all fields are present, otherwise save upi only)
+    const hasFullBankDetails = !!(
+      data.accountName?.trim() &&
+      data.bankName?.trim() &&
+      data.branchName?.trim() &&
+      data.accountNumber?.trim() &&
+      data.ifsc?.trim()
+    );
+
     const account = await prisma.accountDetail.create({
       data: {
         therapistId: therapist.id,
-        accountHolderName: data.accountName,
-        bankName: data.bankName,
-        branchName: data.branchName,
-        accountNumber: data.accountNumber,
-        ifsc: data.ifsc,
-        upi: data.upiId || '',
+        accountHolderName: hasFullBankDetails ? (data.accountName ?? null) : null,
+        bankName: hasFullBankDetails ? (data.bankName ?? null) : null,
+        branchName: hasFullBankDetails ? (data.branchName ?? null) : null,
+        accountNumber: hasFullBankDetails ? (data.accountNumber ?? null) : null,
+        ifsc: hasFullBankDetails ? (data.ifsc ?? null) : null,
+        upi: data.upiId ?? null,
         isDefault: true,
       },
     });
 
-    // 3. Create or update Therapist Slot available days
-    const availableDays = Object.keys(data.slots).map((d) => d.toLowerCase());
-    const existingSlot = await prisma.therapistSlot.findFirst({
+    // 3. Create or update Therapist Slot schedule (weekday → categories)
+    const slot = await prisma.therapistSlot.upsert({
       where: { therapistId: therapist.id },
+      update: { schedule: data.slots },
+      create: {
+        therapistId: therapist.id,
+        schedule: data.slots,
+      },
     });
-
-    let slot;
-    if (existingSlot) {
-      slot = await prisma.therapistSlot.update({
-        where: { id: existingSlot.id },
-        data: { availableDays },
-      });
-    } else {
-      slot = await prisma.therapistSlot.create({
-        data: {
-          therapistId: therapist.id,
-          availableDays,
-        },
-      });
-    }
 
     // TODO: payment for subscription
 
     // 4. Create subscription plan entry
-    const months = data.planId === '3m' ? 3 : data.planId === '6m' ? 6 : 12;
+    let months;
+    switch (data.planId) {
+      case '3m':
+        months = 3;
+        break;
+      case '6m':
+        months = 6;
+        break;
+      case '12m':
+        months = 12;
+        break;
+      default:
+        months = 1; // free trial period
+      // TODO: Implement free trail period fix it
+      // throw new NotFoundError('Invalid plan id');
+    }
     const endDate = new Date();
     endDate.setMonth(endDate.getMonth() + months);
 

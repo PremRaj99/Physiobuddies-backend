@@ -3,8 +3,8 @@ import { asyncHandler } from '@/core/response/responseHandler';
 
 export class CronController {
   expireReservations = asyncHandler(async (_req, res, _next) => {
-    // Logic to expire reservations
-    return new AcceptedResponse('Reservations expired successfully').send(res);
+    // Logic to expire reservations - holds are now managed in Redis and auto-expire
+    return new AcceptedResponse(`Expired 0 holds successfully`).send(res);
   });
 
   markNoShow = asyncHandler(async (_req, res, _next) => {

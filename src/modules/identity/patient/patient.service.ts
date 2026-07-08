@@ -17,7 +17,7 @@ class PatientService {
   getPatientById = async (patientId: string) => {
     // Implementation to get patient by ID
     const patient = await prisma.patient.findUnique({
-      where: { id: patientId, deletedAt: null },
+      where: { id: patientId, deletedAt: { isSet: false } },
     });
     if (!patient) {
       throw new NotFoundError('Patient not found');
@@ -28,7 +28,7 @@ class PatientService {
   getPatientByUserId = async (userId: string) => {
     // Implementation to get patient by user ID
     const patient = await prisma.patient.findFirst({
-      where: { userId, deletedAt: null },
+      where: { userId, deletedAt: { isSet: false } },
     });
     if (!patient) {
       throw new NotFoundError('Patient not found');
@@ -38,7 +38,7 @@ class PatientService {
 
   patientInfo = async (userId: string) => {
     const patient = await prisma.patient.findFirst({
-      where: { userId, deletedAt: null },
+      where: { userId, deletedAt: { isSet: false } },
       include: {
         user: {
           select: {
@@ -101,9 +101,9 @@ class PatientService {
               gte: this.startOfToday(),
               lt: this.endOfToday(),
             },
-            deletedAt: null,
+            deletedAt: { isSet: false },
           },
-          orderBy: { timeSlotTemplate: { startTime: 'asc' } },
+          orderBy: { startHour: 'asc' },
           select: {
             id: true,
             date: true,

@@ -7,6 +7,8 @@ import { therapistPayoutRouter } from './payout/therapistPayout.route';
 import { therapistSessionRouter } from './session/therapistSession.route';
 import { therapistController } from './therapist.controller';
 import { therapistWalletRouter } from './wallet/therapistWallet.route';
+import { slotBlockRouter } from './slot-block/slotBlock.route';
+import { therapistLeaveRouter } from './leave/therapistLeave.route';
 
 export const therapistRouter = Router();
 
@@ -17,6 +19,8 @@ therapistRouter.use('/payout', therapistPayoutRouter);
 therapistRouter.use('/sessions', therapistSessionRouter);
 therapistRouter.use('/wallet', therapistWalletRouter);
 therapistRouter.use('/meta', therapistMetaRouter);
+therapistRouter.use('/slots', slotBlockRouter);
+therapistRouter.use('/leaves', therapistLeaveRouter);
 
 therapistRouter.get('/', therapistController.getAllTherapists);
 therapistRouter.get('/:id', therapistController.getTherapistById);

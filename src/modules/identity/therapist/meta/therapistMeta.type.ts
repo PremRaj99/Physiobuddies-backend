@@ -21,14 +21,17 @@ export const SubmitFinalOnboardingSchema = z.object({
   address: z.string(),
   lat: z.string().or(z.number()),
   lng: z.string().or(z.number()),
-  accountName: z.string(),
-  bankName: z.string(),
-  branchName: z.string(),
-  accountNumber: z.string(),
-  ifsc: z.string(),
+  accountName: z.string().optional().nullable(),
+  bankName: z.string().optional().nullable(),
+  branchName: z.string().optional().nullable(),
+  accountNumber: z.string().optional().nullable(),
+  ifsc: z.string().optional().nullable(),
   upiId: z.string().optional().nullable(),
   planId: z.enum(['3m', '6m', '12m']),
-  slots: z.record(z.string(), z.array(z.string())),
+  slots: z.record(
+    z.enum(['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']),
+    z.array(z.enum(['morning', 'evening', 'night'])),
+  ),
 });
 
 export type SubmitFinalOnboardingDTO = z.infer<typeof SubmitFinalOnboardingSchema>;

@@ -7,7 +7,7 @@ class AdminTherapistService {
   async getAllTherapists() {
     const therapists = prisma.therapist.findMany({
       where: {
-        deletedAt: null,
+        deletedAt: { isSet: false },
       },
       orderBy: {
         createdAt: 'desc',
