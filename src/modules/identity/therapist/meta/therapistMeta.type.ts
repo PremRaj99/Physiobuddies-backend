@@ -28,10 +28,15 @@ export const SubmitFinalOnboardingSchema = z.object({
   ifsc: z.string().optional().nullable(),
   upiId: z.string().optional().nullable(),
   planId: z.enum(['3m', '6m', '12m']),
-  slots: z.record(
-    z.enum(['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']),
-    z.array(z.enum(['morning', 'evening', 'night'])),
-  ),
+  slots: z.object({
+    sunday: z.array(z.enum(['morning', 'evening', 'night'])).optional(),
+    monday: z.array(z.enum(['morning', 'evening', 'night'])).optional(),
+    tuesday: z.array(z.enum(['morning', 'evening', 'night'])).optional(),
+    wednesday: z.array(z.enum(['morning', 'evening', 'night'])).optional(),
+    thursday: z.array(z.enum(['morning', 'evening', 'night'])).optional(),
+    friday: z.array(z.enum(['morning', 'evening', 'night'])).optional(),
+    saturday: z.array(z.enum(['morning', 'evening', 'night'])).optional(),
+  }),
 });
 
 export type SubmitFinalOnboardingDTO = z.infer<typeof SubmitFinalOnboardingSchema>;
