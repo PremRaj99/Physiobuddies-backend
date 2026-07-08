@@ -67,16 +67,33 @@ export const CATEGORY_SLOTS: Record<SlotCategory, SlotDefinition[]> = {
   night: ALL_SLOTS.filter((s) => s.category === 'night'),
 };
 
-/**
- * Given a therapist's schedule (weekday → categories[]) and a weekday,
- * returns the list of SlotDefinitions available for that day.
- */
+export type WeekdayScheduleType =
+  | string[]
+  | {
+      shifts?: string[];
+      disabledHours?: number[];
+    };
+
 export const getSlotsForSchedule = (
-  schedule: Record<string, string[]>,
+  schedule: Record<string, WeekdayScheduleType>,
   weekday: string,
 ): SlotDefinition[] => {
-  const categories = schedule[weekday] || [];
-  return ALL_SLOTS.filter((slot) => categories.includes(slot.category));
+  const daySchedule = schedule[weekday];
+  if (!daySchedule) return [];
+
+  let shifts: string[] = [];
+  let disabledHours: number[] = [];
+
+  if (Array.isArray(daySchedule)) {
+    shifts = daySchedule;
+  } else if (daySchedule && typeof daySchedule === 'object') {
+    shifts = daySchedule.shifts || [];
+    disabledHours = daySchedule.disabledHours || [];
+  }
+
+  return ALL_SLOTS.filter(
+    (slot) => shifts.includes(slot.category) && !disabledHours.includes(slot.startHour),
+  );
 };
 
 /** Validate that a startHour is within the valid slot range */

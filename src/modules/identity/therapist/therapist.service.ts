@@ -309,7 +309,16 @@ class TherapistService {
       const [year, month, day] = dateKey.split('-');
       const formattedDate = `${day}-${month}-${year}`;
 
-      const weekday = currentDay.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+      const WEEKDAYS = [
+        'sunday',
+        'monday',
+        'tuesday',
+        'wednesday',
+        'thursday',
+        'friday',
+        'saturday',
+      ];
+      const weekday = WEEKDAYS[currentDay.getUTCDay()] as string;
 
       // Check Leave: Compare UTC dates directly
       const isDayOnLeave = leaves.some(
@@ -326,7 +335,7 @@ class TherapistService {
 
       for (const slotDef of availableSlots) {
         const slotStart = new Date(currentDay);
-        slotStart.setHours(slotDef.startHour, slotDef.startMinute, 0, 0);
+        slotStart.setUTCHours(slotDef.startHour, slotDef.startMinute, 0, 0);
 
         // 1. Skip if the time has already passed (for today)
         if (slotStart <= now) continue;

@@ -2,7 +2,7 @@ import prisma from '@/config/prisma';
 import { ValidationError } from '@/core/errors/ApiError';
 import { ALL_SLOTS, isValidSlotHour, SLOT_DURATION, getSlotHoldKey } from '@/core/constants/slots';
 import { therapistService } from '../therapist.service';
-import { BlockSlotsDTO } from './slotBlock.type';
+import { BlockSlotsDTO, UpdateWeeklyScheduleDTO } from './slotBlock.type';
 import { redisClient } from '@/shared/redis';
 
 class SlotBlockService {
@@ -18,7 +18,7 @@ class SlotBlockService {
     }
 
     const dateOnly = new Date(date);
-    dateOnly.setHours(0, 0, 0, 0);
+    dateOnly.setUTCHours(0, 0, 0, 0);
 
     // Check Redis for existing holds
     const dateStr = dateOnly.toISOString().split('T')[0] as string;
@@ -81,7 +81,7 @@ class SlotBlockService {
     const { date, startHours } = data;
 
     const dateOnly = new Date(date);
-    dateOnly.setHours(0, 0, 0, 0);
+    dateOnly.setUTCHours(0, 0, 0, 0);
 
     const result = await prisma.slotReservation.updateMany({
       where: {
@@ -95,6 +95,102 @@ class SlotBlockService {
     });
 
     return { message: `Unblocked ${result.count} slot(s).` };
+  }
+
+  async getWeeklySchedule(userId: string) {
+    const therapist = await therapistService.getTherapistByUserId(userId);
+    const therapistSlot = await prisma.therapistSlot.findUnique({
+      where: { therapistId: therapist.id },
+    });
+    return {
+      schedule: therapistSlot ? (therapistSlot.schedule as Record<string, string[]>) : {},
+    };
+  }
+
+  async updateWeeklySchedule(userId: string, data: UpdateWeeklyScheduleDTO) {
+    const therapist = await therapistService.getTherapistByUserId(userId);
+    const therapistSlot = await prisma.therapistSlot.upsert({
+      where: { therapistId: therapist.id },
+      update: { schedule: data.schedule },
+      create: {
+        therapistId: therapist.id,
+        schedule: data.schedule,
+      },
+    });
+    return {
+      message: 'Weekly defaults updated successfully.',
+      schedule: therapistSlot.schedule,
+    };
+  }
+
+  async getBlocksAndLeaves(userId: string, dateStr: string) {
+    const therapist = await therapistService.getTherapistByUserId(userId);
+    const dateOnly = new Date(dateStr);
+    dateOnly.setUTCHours(0, 0, 0, 0);
+
+    // 1. Check if on leave
+    const leaves = await prisma.therapistLeave.findFirst({
+      where: {
+        therapistId: therapist.id,
+        startDate: { lte: dateOnly },
+        endDate: { gte: dateOnly },
+      },
+    });
+
+    // 2. Check blocked slot reservations
+    const blockedReservations = await prisma.slotReservation.findMany({
+      where: {
+        therapistId: therapist.id,
+        date: dateOnly,
+        status: 'blocked',
+        deletedAt: { isSet: false },
+      },
+    });
+
+    const blockedHours = blockedReservations.map((r) => r.startHour);
+
+    return {
+      isOff: !!leaves,
+      blockedHours,
+    };
+  }
+
+  async getOverrides(userId: string) {
+    const therapist = await therapistService.getTherapistByUserId(userId);
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+
+    const blockedReservations = await prisma.slotReservation.findMany({
+      where: {
+        therapistId: therapist.id,
+        status: 'blocked',
+        date: { gte: today },
+        deletedAt: { isSet: false },
+      },
+      orderBy: { date: 'asc' },
+    });
+
+    const grouped: Record<string, number[]> = {};
+    blockedReservations.forEach((r) => {
+      const dateStr = r.date.toISOString().split('T')[0];
+      if (dateStr) {
+        if (!grouped[dateStr]) {
+          grouped[dateStr] = [];
+        }
+        grouped[dateStr].push(r.startHour);
+      }
+    });
+
+    const list = Object.entries(grouped).map(([date, hours]) => {
+      hours.sort((a, b) => a - b);
+      return {
+        date,
+        blockedHours: hours,
+        isOff: hours.length === 16,
+      };
+    });
+
+    return list;
   }
 }
 

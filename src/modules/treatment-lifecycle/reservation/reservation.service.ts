@@ -7,6 +7,7 @@ import {
   isValidSlotHour,
   MIN_BOOKING_LEAD_MINUTES,
   SLOT_DURATION,
+  WeekdayScheduleType,
 } from '@/core/constants/slots';
 import { SlotManager } from './slotManagement';
 
@@ -24,10 +25,10 @@ class ReservationService {
     }
 
     const dateOnly = new Date(date);
-    dateOnly.setHours(0, 0, 0, 0);
+    dateOnly.setUTCHours(0, 0, 0, 0);
 
     const slotStart = new Date(dateOnly);
-    slotStart.setHours(startHour, 0, 0, 0);
+    slotStart.setUTCHours(startHour, 0, 0, 0);
     const now = new Date();
 
     // 1. Check 1-hour lead time
@@ -57,12 +58,23 @@ class ReservationService {
       throw new ValidationError('Therapist is on leave for this date.');
     }
 
-    const weekday = dateOnly.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
-    const schedule = therapistSlot.schedule as Record<string, string[]>;
-    const categoriesForDay = schedule[weekday] || [];
+    const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const weekday = WEEKDAYS[dateOnly.getUTCDay()] as string;
+    const schedule = therapistSlot.schedule as Record<string, WeekdayScheduleType>;
+    const daySchedule = schedule[weekday];
+    let shifts: string[] = [];
+    let disabledHours: number[] = [];
+
+    if (Array.isArray(daySchedule)) {
+      shifts = daySchedule;
+    } else if (daySchedule && typeof daySchedule === 'object') {
+      shifts = daySchedule.shifts || [];
+      disabledHours = daySchedule.disabledHours || [];
+    }
+
     const slotDef = ALL_SLOTS.find((s) => s.startHour === startHour);
 
-    if (!slotDef || !categoriesForDay.includes(slotDef.category)) {
+    if (!slotDef || !shifts.includes(slotDef.category) || disabledHours.includes(startHour)) {
       throw new ValidationError('Therapist does not work during this slot on this day.');
     }
 

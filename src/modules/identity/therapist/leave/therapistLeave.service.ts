@@ -9,10 +9,10 @@ class TherapistLeaveService {
     const { startDate, endDate, reason } = data;
 
     const start = new Date(startDate);
-    start.setHours(0, 0, 0, 0);
+    start.setUTCHours(0, 0, 0, 0);
 
     const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999);
+    end.setUTCHours(23, 59, 59, 999);
 
     if (start > end) {
       throw new ValidationError('Start date must be before or equal to end date.');
