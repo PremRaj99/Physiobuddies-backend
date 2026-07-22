@@ -1,6 +1,7 @@
 import { verifyJWT } from '@/core/middlewares/verifyJWT';
 import { Router } from 'express';
 import { userController } from './user.controller';
+import { userSessionRouter } from './session/userSession.route';
 
 const { getInfo, updateInfo, updateAvatar, changePassword } = userController;
 
@@ -11,3 +12,4 @@ userRouter.get('/', getInfo);
 userRouter.patch('/', updateInfo);
 userRouter.patch('/avatar', updateAvatar);
 userRouter.patch('/password', changePassword);
+userRouter.use('/sessions', userSessionRouter);

@@ -1,17 +1,17 @@
 import { z } from 'zod';
 
 export const TherapistQuerySchema = z.object({
-  lng: z.number().optional(),
-  lat: z.number().optional(),
-  radius: z.number().optional(),
+  lng: z.coerce.number().optional(),
+  lat: z.coerce.number().optional(),
+  radius: z.coerce.number().optional(),
   mode: z.enum(['home_visit', 'online', 'clinic']).optional(),
   gender: z.enum(['male', 'female', 'other']).optional(),
   specialization: z.array(z.string()).optional(),
-  price: z.array(z.number().nonnegative()).length(2).optional(),
-  experience: z.array(z.number().nonnegative()).length(2).optional(),
+  price: z.array(z.coerce.number().nonnegative()).length(2).optional(),
+  experience: z.array(z.coerce.number().nonnegative()).length(2).optional(),
   sort: z.enum(['rating', 'experience', 'price', 'distance']).optional(),
-  page: z.number().int().positive().optional(),
-  limit: z.number().int().positive().optional(),
+  page: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().positive().optional(),
 });
 
 export type TherapistQueryDTO = z.infer<typeof TherapistQuerySchema>;

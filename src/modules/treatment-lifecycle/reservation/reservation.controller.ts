@@ -18,7 +18,8 @@ class ReservationController {
       date: new Date(body.date),
       startHour: body.startHour,
     });
-    return new AcceptedResponse(result.message).send(res);
+    // Return full result so the client receives reservationId + expiresAt (needed to confirm).
+    return new OkResponse(result).send(res);
   });
 
   confirmReservation = asyncHandler(async (req, res, _next) => {

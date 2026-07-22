@@ -91,7 +91,7 @@ class AuthService {
       throw new ValidationError('Invalid credentials');
     }
 
-    const tokens = this.generateTokens(isUserExist, req);
+    const tokens = await this.generateTokens(isUserExist, req);
 
     return tokens;
   };
@@ -240,10 +240,23 @@ class AuthService {
   };
 
   refreshToken = async (req: Request) => {
-    const refreshToken = req.cookies.refresh_token || req.body.refresh;
+    const refreshToken =
+      req.cookies?.refresh_token ||
+      req.body?.refresh ||
+      req.body?.refreshToken ||
+      req.body?.refresh_token ||
+      (req.headers.authorization?.startsWith('Bearer ')
+        ? req.headers.authorization.split(' ')[1]
+        : undefined);
 
     if (!refreshToken) {
       throw new ValidationError('Refresh token not provided');
+    }
+
+    try {
+      jwt.verify(refreshToken, REFRESH_TOKEN_SECRET as string);
+    } catch {
+      throw new ValidationError('Invalid or expired refresh token');
     }
 
     const session = await prisma.authSession.findUnique({
@@ -255,7 +268,12 @@ class AuthService {
       },
     });
 
-    if (!session || session.expiredAt < new Date()) {
+    if (
+      !session ||
+      !session.user ||
+      session.user.status !== 'active' ||
+      session.expiredAt < new Date()
+    ) {
       throw new ValidationError('Invalid or expired refresh token');
     }
 
@@ -265,17 +283,25 @@ class AuthService {
   };
 
   logout = async (req: Request) => {
-    const refreshToken = req.cookies.refresh_token;
+    const refreshToken =
+      req.cookies?.refresh_token ||
+      req.body?.refresh ||
+      req.body?.refreshToken ||
+      req.body?.refresh_token;
 
     if (!refreshToken) {
       return false;
     }
 
-    await prisma.authSession.delete({
-      where: {
-        refreshToken: refreshToken,
-      },
-    });
+    try {
+      await prisma.authSession.delete({
+        where: {
+          refreshToken: refreshToken,
+        },
+      });
+    } catch {
+      // Session might already be deleted
+    }
 
     return true;
   };

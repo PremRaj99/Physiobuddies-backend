@@ -19,6 +19,8 @@ import { cronRouter } from './modules/internal/cron/cron.route';
 import { reservationRouter } from './modules/treatment-lifecycle/reservation/reservation.route';
 import { treatmentSessionRouter } from './modules/treatment-lifecycle/treatment-session/treatmentSession.route';
 import { logRouter } from './modules/log/log.route';
+import { activityRouter } from './modules/log/activity/activity.route';
+import { complaintRouter } from './modules/important-data/complaint/complaint.route';
 // src/app.ts
 import '@/core/api-docs/swagger-init';
 
@@ -40,11 +42,14 @@ router.use('/invoice', invoiceRouter);
 router.use('/webhook', webhookRouter);
 router.use('/file-upload', fileUploadRouter);
 router.use('/notification', notificationRouter);
+router.use('/notifications', notificationRouter);
 router.use('/payment', paymentRouter);
 router.use('/jobs', cronRouter);
 router.use('/therapist-registration', therapistRegistrationRouter);
 router.use('/reservation', reservationRouter);
 router.use('/treatment-session', treatmentSessionRouter);
+router.use('/activity', activityRouter);
+router.use('/complaint', complaintRouter);
 
 // dev route
 router.use('/logs', logRouter);

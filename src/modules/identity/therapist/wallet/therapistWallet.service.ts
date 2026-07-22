@@ -1,13 +1,19 @@
+import prisma from '@/config/prisma';
+import { resolveTherapist, computeBalance } from './wallet.helper';
+
 class TherapistWalletService {
-  async getWalletInfo(_therapistId: string) {
-    // Fetch wallet info from database
-    const walletInfo = {
-      balance: 1000, // Example balance
+  async getWalletInfo(userId: string) {
+    const therapist = await resolveTherapist(userId);
+
+    const entries = await prisma.therapistWallet.findMany({
+      where: { therapistId: therapist.id },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return {
+      balance: computeBalance(entries),
+      entries,
     };
-    if (!walletInfo) {
-      throw new Error('Wallet not found');
-    }
-    return walletInfo;
   }
 }
 

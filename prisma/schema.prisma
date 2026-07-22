@@ -925,12 +925,16 @@ model contact {
 
 model Complaint {
   id          String        @id @default(auto()) @map("_id") @db.ObjectId
-  userId      String        @unique @db.ObjectId
+  userId      String        @db.ObjectId
   type        String
   description String
   status      ContactStatus
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
   reply       Reply[]
   user        User          @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }
 
 model Reply {
@@ -938,6 +942,7 @@ model Reply {
   role        ReplyRole
   message     String
   complaintId String    @db.ObjectId
+  createdAt   DateTime  @default(now())
   complaint   Complaint @relation(fields: [complaintId], references: [id])
 }
 
