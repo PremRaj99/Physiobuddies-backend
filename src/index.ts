@@ -11,6 +11,8 @@ import { initRedis } from './shared/redis';
 import { requestContextMiddleware } from './core/logger/requestContextMiddleware';
 import { Request, Response } from 'express';
 import { setupLogWebSocket } from './modules/log/log.service';
+import { NotFoundError } from './core/errors/ApiError';
+import { activityLoggerMiddleware } from './core/middlewares/activityLoggerMiddleware';
 
 const app = express();
 
@@ -38,6 +40,7 @@ app.get('/health-check', (req: Request, res: Response) => {
 // Apply body parsing only to non-proxy routes
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ limit: '100mb', extended: true }));
+app.use(activityLoggerMiddleware);
 
 app.use('/api/v1', router);
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
@@ -51,6 +54,10 @@ if (clientPath && NODE_ENV === 'production') {
   // FIX: Change '*' to /.*$/
   app.get(/.*$/, (_req: Request, res: Response) => {
     res.sendFile(path.join(clientPath, 'index.html'));
+  });
+} else {
+  app.use((_req: Request, _res: Response, next) => {
+    next(new NotFoundError('Route not found'));
   });
 }
 

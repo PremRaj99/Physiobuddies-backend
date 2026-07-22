@@ -10,6 +10,7 @@ import jwt from 'jsonwebtoken';
 import { generatePatientId, generateTherapistId } from './generateBussinessId';
 import { googleUserResponse, oauth2Client } from './googleClient';
 import { checkOTP, checkRateLimits, createAndStoreOTP } from './otp-management';
+import { logActivity } from '@/modules/log/activity/activity.service';
 
 class AuthService {
   constructor() {}
@@ -92,6 +93,14 @@ class AuthService {
     }
 
     const tokens = await this.generateTokens(isUserExist, req);
+
+    await logActivity({
+      userId: isUserExist.id,
+      title: 'User Logged In',
+      data: `User ${isUserExist.email} logged in successfully`,
+      type: 'frequent',
+      req,
+    });
 
     return tokens;
   };

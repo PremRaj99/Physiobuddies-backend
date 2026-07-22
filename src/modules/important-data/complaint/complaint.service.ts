@@ -1,5 +1,6 @@
 import prisma from '@/config/prisma';
 import { NotFoundError } from '@/core/errors/ApiError';
+import { logActivity } from '@/modules/log/activity/activity.service';
 import { CreateComplaintDTO } from './complaint.type';
 
 function getTimestampFromObjectId(id: string): Date {
@@ -56,6 +57,13 @@ class ComplaintService {
       },
     });
 
+    await logActivity({
+      userId,
+      title: 'Complaint Submitted',
+      data: `Submitted complaint (${data.type}): ${data.description}`,
+      type: 'possible',
+    });
+
     return {
       id: complaint.id,
       type: complaint.type,
@@ -87,6 +95,13 @@ class ComplaintService {
         role: 'user',
         message,
       },
+    });
+
+    await logActivity({
+      userId,
+      title: 'Complaint Reply Added',
+      data: `Added reply to complaint ${complaintId}`,
+      type: 'frequent',
     });
 
     return {

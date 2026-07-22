@@ -1,5 +1,6 @@
 import prisma from '@/config/prisma';
 import { ValidationError, NotFoundError } from '@/core/errors/ApiError';
+import { logActivity } from '@/modules/log/activity/activity.service';
 import { redisClient } from '@/shared/redis';
 import {
   ALL_SLOTS,
@@ -111,6 +112,13 @@ class ReservationService {
         },
       });
 
+      await logActivity({
+        userId: patientId,
+        title: 'Booking Confirmed',
+        data: `Confirmed reservation ${reservation.id} for slot ${holdData.startHour}:00`,
+        type: 'likely',
+      });
+
       return { reservationId: reservation.id, message: 'Reservation confirmed successfully' };
     }
 
@@ -139,6 +147,12 @@ class ReservationService {
     const holdData = await SlotManager.removeHoldOnly(reservationId, patientId);
 
     if (holdData) {
+      await logActivity({
+        userId: patientId,
+        title: 'Reservation Hold Released',
+        data: `Cancelled held slot for ${reservationId}`,
+        type: 'frequent',
+      });
       return { reservationId, message: 'Reservation cancelled successfully' };
     }
 
@@ -167,6 +181,13 @@ class ReservationService {
       reservation.startHour,
     );
     await redisClient.del(holdKey);
+
+    await logActivity({
+      userId: patientId,
+      title: 'Booking Cancelled',
+      data: `Cancelled booking reservation ${reservationId}`,
+      type: 'possible',
+    });
 
     return { reservationId, message: 'Reservation cancelled successfully' };
   };
