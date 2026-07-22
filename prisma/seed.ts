@@ -6,7 +6,7 @@
  *
  * Run:  npx tsx prisma/seed.ts   (or `npm run seed` once wired in package.json)
  */
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma, ReservationStatus } from '@prisma/client';
 import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -290,6 +290,15 @@ async function main() {
       },
     });
 
+    await prisma.subscription.create({
+      data: {
+        therapistId: therapist.id,
+        isActive: true,
+        startDate: daysFromNow(-10),
+        endDate: daysFromNow(355),
+      },
+    });
+
     therapists.push(therapist);
   }
 
@@ -338,28 +347,129 @@ async function main() {
     patientLocations.push(location);
   }
 
-  // ---- SUBSCRIPTIONS (+ subscription payment) ----
-  const subscription = await prisma.subscription.create({
-    data: {
+  // ---- SLOT RESERVATIONS / THERAPIST SESSIONS ----
+  const reservationsData: Prisma.SlotReservationUncheckedCreateInput[] = [
+    // Dr. Aarav Mehta (therapists[0])
+    {
       therapistId: therapists[0]!.id,
-      isActive: true,
-      startDate: daysFromNow(-10),
-      endDate: daysFromNow(355),
+      patientId: patients[0]!.id,
+      startHour: 10,
+      startTime: daysFromNow(0, 10),
+      endTime: daysFromNow(0, 11),
+      date: daysFromNow(0),
+      status: 'booked',
     },
-  });
+    {
+      therapistId: therapists[0]!.id,
+      patientId: patients[1]!.id,
+      startHour: 14,
+      startTime: daysFromNow(1, 14),
+      endTime: daysFromNow(1, 15),
+      date: daysFromNow(1),
+      status: 'booked',
+    },
+    {
+      therapistId: therapists[0]!.id,
+      patientId: patients[2]!.id,
+      startHour: 16,
+      startTime: daysFromNow(2, 16),
+      endTime: daysFromNow(2, 17),
+      date: daysFromNow(2),
+      status: 'booked',
+    },
+    {
+      therapistId: therapists[0]!.id,
+      patientId: patients[0]!.id,
+      startHour: 11,
+      startTime: daysFromNow(-5, 11),
+      endTime: daysFromNow(-5, 12),
+      date: daysFromNow(-5),
+      status: 'booked',
+    },
+    // Dr. Sara Khan (therapists[1])
+    {
+      therapistId: therapists[1]!.id,
+      patientId: patients[1]!.id,
+      startHour: 11,
+      startTime: daysFromNow(0, 11),
+      endTime: daysFromNow(0, 12),
+      date: daysFromNow(0),
+      status: 'booked',
+    },
+    {
+      therapistId: therapists[1]!.id,
+      patientId: patients[0]!.id,
+      startHour: 16,
+      startTime: daysFromNow(3, 16),
+      endTime: daysFromNow(3, 17),
+      date: daysFromNow(3),
+      status: 'booked',
+    },
+    {
+      therapistId: therapists[1]!.id,
+      patientId: patients[2]!.id,
+      startHour: 9,
+      startTime: daysFromNow(-2, 9),
+      endTime: daysFromNow(-2, 10),
+      date: daysFromNow(-2),
+      status: 'booked',
+    },
+    // Dr. Rohan Iyer (therapists[2])
+    {
+      therapistId: therapists[2]!.id,
+      patientId: patients[2]!.id,
+      startHour: 12,
+      startTime: daysFromNow(0, 12),
+      endTime: daysFromNow(0, 13),
+      date: daysFromNow(0),
+      status: 'booked',
+    },
+    {
+      therapistId: therapists[2]!.id,
+      patientId: patients[1]!.id,
+      startHour: 15,
+      startTime: daysFromNow(2, 15),
+      endTime: daysFromNow(2, 16),
+      date: daysFromNow(2),
+      status: 'booked',
+    },
+    {
+      therapistId: therapists[2]!.id,
+      patientId: patients[0]!.id,
+      startHour: 10,
+      startTime: daysFromNow(-3, 10),
+      endTime: daysFromNow(-3, 11),
+      date: daysFromNow(-3),
+      status: 'booked',
+    },
+  ];
 
-  await prisma.payment.create({
-    data: {
-      userId: therapistUsers[0]!.id,
-      invoiceId: 'INV-SUB-0001',
-      webhookEventId: 'evt_seed_sub_0001',
-      status: 'completed',
-      amount: 2999,
-      paidAt: daysFromNow(-10),
-      purpose: 'subscription',
-      subscriptionId: subscription.id,
-    },
-  });
+  for (const rData of reservationsData) {
+    await prisma.slotReservation.create({
+      data: rData,
+    });
+  }
+
+  // ---- SUBSCRIPTION PAYMENT ----
+  for (let i = 0; i < therapistUsers.length; i++) {
+    const sub = await prisma.subscription.findFirst({
+      where: { therapistId: therapists[i]!.id },
+    });
+    if (sub) {
+      await prisma.payment.create({
+        data: {
+          userId: therapistUsers[i]!.id,
+          invoiceId: `INV-SUB-000${i + 1}`,
+          webhookEventId: `evt_seed_sub_000${i + 1}`,
+          status: 'completed',
+          amount: 2999,
+          paidAt: daysFromNow(-10),
+          purpose: 'subscription',
+          subscriptionId: sub.id,
+        },
+      });
+    }
+  }
 
   // ---- TREATMENT PLAN (patient 0 <-> therapist 0) ----
   const patient0 = patients[0]!;
