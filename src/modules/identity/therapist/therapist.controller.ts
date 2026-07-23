@@ -5,7 +5,14 @@ import { ObjectIdSchema } from '../auth/auth.type';
 import { therapistService } from './therapist.service';
 import { TherapistQuerySchema } from './therapist.type';
 
+import { isAuth } from '@/core/middlewares/isAuth';
+
 class TherapistController {
+  async getTherapistDashboard(req: Request, res: Response, _next: NextFunction) {
+    isAuth(req);
+    const dashboardData = await therapistService.getDashboardData(req.user.id);
+    return new OkResponse(dashboardData).send(res);
+  }
   async getAllTherapists(req: Request, res: Response, _next: NextFunction) {
     const query = validateSchema(TherapistQuerySchema, req.query);
     const therapists = await therapistService.getAllTherapists(query);

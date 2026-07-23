@@ -10,7 +10,11 @@ import { therapistWalletRouter } from './wallet/therapistWallet.route';
 import { slotBlockRouter } from './slot-block/slotBlock.route';
 import { therapistLeaveRouter } from './leave/therapistLeave.route';
 
+import { verifyJWT } from '@/core/middlewares/verifyJWT';
+
 export const therapistRouter = Router();
+
+therapistRouter.get('/dashboard', verifyJWT, therapistController.getTherapistDashboard);
 
 therapistRouter.use('/articles', therapistArticleRouter);
 therapistRouter.use('/earnings', therapistEarningRouter);
