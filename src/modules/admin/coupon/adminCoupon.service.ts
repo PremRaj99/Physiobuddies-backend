@@ -5,7 +5,7 @@ import prisma from '@/config/prisma';
 class AdminCouponService {
   async getAllCoupons() {
     const coupons = await prisma.coupon.findMany({
-      where: { deletedAt: { isSet: false } },
+      where: { OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }] },
       include: {
         assignments: {
           select: {
@@ -60,7 +60,7 @@ class AdminCouponService {
 
   async updateCoupon(id: string, data: UpdateCouponDTO) {
     const existingCoupon = await prisma.coupon.findUnique({
-      where: { id, deletedAt: { isSet: false } },
+      where: { id, OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }] },
     });
     if (!existingCoupon) {
       throw new NotFoundError('Coupon not found');

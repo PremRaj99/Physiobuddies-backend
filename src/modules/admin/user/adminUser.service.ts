@@ -5,8 +5,7 @@ class AdminUserService {
   async getAllUsers() {
     const users = await prisma.user.findMany({
       where: {
-        status: 'active',
-        deletedAt: { isSet: false },
+        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
       },
       select: {
         id: true,
@@ -14,8 +13,12 @@ class AdminUserService {
         email: true,
         createdAt: true,
         role: true,
+        status: true,
         image: true,
         phone: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
       },
     });
     return users;
@@ -29,13 +32,16 @@ class AdminUserService {
     if (!user) {
       throw new NotFoundError('User not found');
     }
+
+    const nextStatus = user.status === 'blocked' ? 'active' : 'blocked';
+
     await prisma.user.update({
       where: { id: userId },
       data: {
-        status: user.status === 'active' ? 'blocked' : 'active',
+        status: nextStatus,
       },
     });
-    return `${user.name} has been ${user.status === 'active' ? 'blocked' : 'unblocked'} successfully.`;
+    return `${user.name || 'User'} has been ${nextStatus === 'blocked' ? 'blocked' : 'unblocked'} successfully.`;
   }
 }
 

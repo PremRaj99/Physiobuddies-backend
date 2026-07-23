@@ -1,17 +1,41 @@
-import type { NextFunction, Request, Response } from 'express';
+import { AcceptedResponse, OkResponse } from '@/core/response/ApiResponse';
+import { asyncHandler } from '@/core/response/responseHandler';
+import { therapistRegistrationService } from './therapist-registration.service';
+import { validateSchema } from '@/core/utils/validateSchema';
+import { ObjectIdSchema } from '@/modules/identity/auth/auth.type';
 
 class TherapistRegistrationController {
-  async submitRegistration(_req: Request, _res: Response, _next: NextFunction) {}
+  submitRegistration = asyncHandler(async (_req, res, _next) => {
+    return new AcceptedResponse('Therapist registration submitted successfully').send(res);
+  });
 
-  async getAllRegistrations(_req: Request, _res: Response, _next: NextFunction) {}
+  getAllRegistrations = asyncHandler(async (_req, res, _next) => {
+    const registrations = await therapistRegistrationService.getAllRegistrations();
+    return new OkResponse(registrations).send(res);
+  });
 
-  async getRegistrationById(_req: Request, _res: Response, _next: NextFunction) {}
+  getRegistrationById = asyncHandler(async (req, res, _next) => {
+    const id = validateSchema(ObjectIdSchema, req.params.id);
+    const registration = await therapistRegistrationService.getRegistrationById(id);
+    return new OkResponse(registration).send(res);
+  });
 
-  async updateRegistrationStatus(_req: Request, _res: Response, _next: NextFunction) {}
+  updateRegistrationStatus = asyncHandler(async (_req, res, _next) => {
+    return new AcceptedResponse('Registration status updated').send(res);
+  });
 
-  async approveRegistration(_req: Request, _res: Response, _next: NextFunction) {}
+  approveRegistration = asyncHandler(async (req, res, _next) => {
+    const id = validateSchema(ObjectIdSchema, req.params.id);
+    const message = await therapistRegistrationService.approveRegistration(id);
+    return new AcceptedResponse(message).send(res);
+  });
 
-  async rejectRegistration(_req: Request, _res: Response, _next: NextFunction) {}
+  rejectRegistration = asyncHandler(async (req, res, _next) => {
+    const id = validateSchema(ObjectIdSchema, req.params.id);
+    const reason = req.body?.reason;
+    const message = await therapistRegistrationService.rejectRegistration(id, reason);
+    return new AcceptedResponse(message).send(res);
+  });
 }
 
 export const therapistRegistrationController = new TherapistRegistrationController();

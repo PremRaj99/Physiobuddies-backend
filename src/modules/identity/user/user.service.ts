@@ -7,7 +7,7 @@ import { updateInfoData } from './user.helper';
 class UserService {
   getUserById = async (id: string) => {
     const user = await prisma.user.findFirst({
-      where: { id, deletedAt: { isSet: false }, status: 'active' },
+      where: { id, OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }], status: 'active' },
     });
 
     if (!user) {
@@ -19,7 +19,11 @@ class UserService {
 
   getInfo = async (userId: string) => {
     const user = await prisma.user.findFirst({
-      where: { id: userId, deletedAt: { isSet: false }, status: 'active' },
+      where: {
+        id: userId,
+        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
+        status: 'active',
+      },
       include: {
         therapistProfile: {
           include: {

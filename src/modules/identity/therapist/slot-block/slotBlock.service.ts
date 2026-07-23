@@ -38,7 +38,7 @@ class SlotBlockService {
         therapistId: therapist.id,
         date: dateOnly,
         startHour: { in: startHours },
-        deletedAt: { isSet: false },
+        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
       },
     });
 
@@ -89,7 +89,7 @@ class SlotBlockService {
         date: dateOnly,
         startHour: { in: startHours },
         status: 'blocked',
-        deletedAt: { isSet: false },
+        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
       },
       data: { deletedAt: new Date() },
     });
@@ -143,7 +143,7 @@ class SlotBlockService {
         therapistId: therapist.id,
         date: dateOnly,
         status: 'blocked',
-        deletedAt: { isSet: false },
+        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
       },
     });
 
@@ -165,7 +165,7 @@ class SlotBlockService {
         therapistId: therapist.id,
         status: 'blocked',
         date: { gte: today },
-        deletedAt: { isSet: false },
+        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
       },
       orderBy: { date: 'asc' },
     });

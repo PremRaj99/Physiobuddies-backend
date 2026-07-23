@@ -32,7 +32,7 @@ class TherapistLeaveService {
           gte: start,
           lte: end,
         },
-        deletedAt: { isSet: false },
+        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
       },
     });
 

@@ -14,7 +14,7 @@ class TherapistSessionService {
     const reservations = await prisma.slotReservation.findMany({
       where: {
         therapistId: therapist.id,
-        deletedAt: { isSet: false },
+        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
       },
       include: {
         patient: {
@@ -79,7 +79,7 @@ class TherapistSessionService {
     const reservations = await prisma.slotReservation.findMany({
       where: {
         therapistId,
-        deletedAt: { isSet: false },
+        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
         date: { gte: startOfDay, lte: endOfDay },
       },
       include: {
@@ -99,7 +99,7 @@ class TherapistSessionService {
     const reservations = await prisma.slotReservation.findMany({
       where: {
         therapistId,
-        deletedAt: { isSet: false },
+        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
         startTime: { gte: now },
       },
       include: {

@@ -4,12 +4,13 @@ import { validateSchema } from '@/core/utils/validateSchema';
 import { isAuth } from '@/core/middlewares/isAuth';
 import { ObjectIdSchema } from '@/modules/identity/auth/auth.type';
 import { complaintService } from './complaint.service';
-import { CreateComplaintSchema, CreateReplySchema } from './complaint.type';
+import { CreateComplaintSchema } from './complaint.type';
 
 class ComplaintController {
   getUserComplaints = asyncHandler(async (req, res, _next) => {
     isAuth(req);
-    const complaints = await complaintService.getUserComplaints(req.user.id);
+    const isAdmin = req.user.role === 'admin';
+    const complaints = await complaintService.getUserComplaints(req.user.id, isAdmin);
     return new OkResponse(complaints).send(res);
   });
 
@@ -23,8 +24,12 @@ class ComplaintController {
   addReply = asyncHandler(async (req, res, _next) => {
     isAuth(req);
     const complaintId = validateSchema(ObjectIdSchema, req.params.id);
-    const { message } = validateSchema(CreateReplySchema, req.body);
-    const reply = await complaintService.addReply(req.user.id, complaintId, message);
+    const message = req.body.message || req.body.text;
+    if (!message || typeof message !== 'string') {
+      return res.status(400).json({ success: false, message: 'Reply text/message is required' });
+    }
+    const role = req.user.role === 'admin' ? 'support' : 'user';
+    const reply = await complaintService.addReply(req.user.id, complaintId, message, role);
     return new OkResponse(reply).send(res);
   });
 }

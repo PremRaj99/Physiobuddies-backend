@@ -15,7 +15,7 @@ import { TherapistQueryDTO } from './therapist.type';
 class TherapistService {
   getTherapistByUserId = async (userId: string) => {
     const therapist = await prisma.therapist.findUnique({
-      where: { userId, deletedAt: { isSet: false } },
+      where: { userId, OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }] },
     });
     if (!therapist) throw new NotFoundError('Therapist not found');
     return therapist;
@@ -261,7 +261,7 @@ class TherapistService {
         where: {
           therapistId,
           date: { gte: todayStart, lte: threeDaysEnd },
-          deletedAt: { isSet: false },
+          OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
         },
       }),
       prisma.therapistLeave.findMany({

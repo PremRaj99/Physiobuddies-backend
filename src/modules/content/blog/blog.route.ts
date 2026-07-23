@@ -5,6 +5,9 @@ import { AdminOnly } from '@/core/middlewares/verifyAdmin';
 
 export const blogRouter = Router();
 
+blogRouter.get('/admin/all', verifyJWT, AdminOnly, blogController.getAllBlogsForAdmin);
+blogRouter.put('/admin/:id', verifyJWT, AdminOnly, blogController.updateBlog);
+
 blogRouter.get('/', blogController.getAllBlogs);
 blogRouter.get('/:slug', blogController.getBlogBySlug);
 
@@ -16,6 +19,4 @@ blogRouter.post('/:id/review', blogController.createReview);
 blogRouter.use(AdminOnly);
 
 blogRouter.post('/', blogController.createBlog);
-blogRouter.get('/admin/all', blogController.getAllBlogsForAdmin);
-blogRouter.put('/admin/:id', blogController.updateBlog);
 blogRouter.delete('/:id', blogController.deleteBlog);

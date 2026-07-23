@@ -13,17 +13,21 @@ function getTimestampFromObjectId(id: string): Date {
 }
 
 class ComplaintService {
-  async getUserComplaints(userId: string) {
+  async getUserComplaints(userId: string, isAdmin = false) {
+    const where = isAdmin ? {} : { userId };
     const complaints = await prisma.complaint.findMany({
-      where: { userId },
+      where,
       orderBy: { id: 'desc' },
       include: {
         reply: { orderBy: { id: 'asc' } },
+        user: { select: { name: true, email: true } },
       },
     });
 
     return complaints.map((complaint) => ({
       id: complaint.id,
+      userId: complaint.userId,
+      user: complaint.user,
       type: complaint.type,
       description: complaint.description,
       status: complaint.status,
@@ -80,9 +84,15 @@ class ComplaintService {
     };
   }
 
-  async addReply(userId: string, complaintId: string, message: string) {
+  async addReply(
+    userId: string,
+    complaintId: string,
+    message: string,
+    role: 'user' | 'support' = 'user',
+  ) {
+    const where = role === 'support' ? { id: complaintId } : { id: complaintId, userId };
     const complaint = await prisma.complaint.findFirst({
-      where: { id: complaintId, userId },
+      where,
     });
 
     if (!complaint) {
@@ -92,7 +102,7 @@ class ComplaintService {
     const reply = await prisma.reply.create({
       data: {
         complaintId,
-        role: 'user',
+        role,
         message,
       },
     });

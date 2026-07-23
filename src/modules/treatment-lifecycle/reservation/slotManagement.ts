@@ -46,7 +46,7 @@ export class SlotManager {
         therapistId,
         date: dateOnly,
         startHour,
-        deletedAt: { isSet: false },
+        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
       },
     });
 
