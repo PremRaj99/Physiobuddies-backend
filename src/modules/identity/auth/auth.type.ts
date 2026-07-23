@@ -73,9 +73,11 @@ export const GoogleLoginSchema = z.object({
   code: z.string('invalid login'),
 });
 
-export const RefershTokenSchema = z.object({
-  refresh: z.string().optional(),
-});
+export const RefershTokenSchema = z
+  .object({
+    refresh: z.string().optional(),
+  })
+  .optional();
 
 export const ForgotPasswordSchema = z.object({
   email: EmailSchema,

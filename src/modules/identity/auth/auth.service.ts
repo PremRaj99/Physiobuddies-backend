@@ -45,19 +45,23 @@ class AuthService {
     const geo = await geoip.lookup(req.ip || '');
 
     if (refreshTokenParams) {
-      await prisma.authSession.update({
-        where: {
-          refreshToken: refreshTokenParams,
-        },
-        data: {
-          refreshToken: refreshToken,
-          ip: req.ip || '',
-          agent: req.get('User-Agent') || '',
-          expiredAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-          location: geo ? `${geo.city}, ${geo.region}, ${geo.country}` : '', // You can use a geoip library to get location from IP
-          lastLoggedAt: new Date(),
-        },
-      });
+      try {
+        await prisma.authSession.update({
+          where: {
+            refreshToken: refreshTokenParams,
+          },
+          data: {
+            refreshToken: refreshToken,
+            ip: req.ip || '',
+            agent: req.get('User-Agent') || '',
+            expiredAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+            location: geo ? `${geo.city}, ${geo.region}, ${geo.country}` : '', // You can use a geoip library to get location from IP
+            lastLoggedAt: new Date(),
+          },
+        });
+      } catch {
+        throw new ValidationError('invalid session');
+      }
     } else {
       await prisma.authSession.create({
         data: {
@@ -268,15 +272,20 @@ class AuthService {
       throw new ValidationError('Invalid or expired refresh token');
     }
 
-    const session = await prisma.authSession.findUnique({
-      where: {
-        refreshToken: refreshToken,
-      },
-      include: {
-        user: true,
-      },
-    });
+    let session;
 
+    try {
+      session = await prisma.authSession.findUnique({
+        where: {
+          refreshToken: refreshToken,
+        },
+        include: {
+          user: true,
+        },
+      });
+    } catch (err) {
+      throw new ValidationError('Invalid or expired refresh token');
+    }
     if (
       !session ||
       !session.user ||
