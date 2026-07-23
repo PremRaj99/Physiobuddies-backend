@@ -479,17 +479,29 @@ class TherapistService {
     const monthlyRevenue = monthlyCommissions.reduce((acc, c) => acc + c.therapistAmount, 0);
 
     // 5. Ratings & Reviews Average
-    const reviews = await prisma.therapistReview.findMany({
-      where: {
-        therapistId: therapist.id,
-        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
-      },
-    });
-    const totalRatings = reviews.length;
+    const [therapistReviews, patientReviews] = await Promise.all([
+      prisma.therapistReview.findMany({
+        where: {
+          therapistId: therapist.id,
+          OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
+        },
+      }),
+      prisma.patientReview.findMany({
+        where: {
+          therapistId: therapist.id,
+          OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
+        },
+      }),
+    ]);
+
+    const allReviews = [...therapistReviews, ...patientReviews];
+    const totalRatings = allReviews.length;
     const avgRating =
       totalRatings > 0
-        ? Math.round((reviews.reduce((sum, r) => sum + r.rating, 0) / totalRatings) * 10) / 10
-        : therapist.rating || 4.8;
+        ? Math.round((allReviews.reduce((sum, r) => sum + r.rating, 0) / totalRatings) * 10) / 10
+        : therapist.rating
+          ? Math.round(therapist.rating * 10) / 10
+          : 0;
 
     // 6. Weekly Trend (Current Mon-Sun sessions)
     const dayOfWeek = now.getDay();
@@ -501,19 +513,33 @@ class TherapistService {
     const weekEnd = new Date(monDate);
     weekEnd.setDate(monDate.getDate() + 7);
 
-    const weekReservations = await prisma.slotReservation.findMany({
-      where: {
-        therapistId: therapist.id,
-        date: { gte: monDate, lt: weekEnd },
-        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
-      },
-    });
+    const [weekReservations, weekTreatmentSessions] = await Promise.all([
+      prisma.slotReservation.findMany({
+        where: {
+          therapistId: therapist.id,
+          date: { gte: monDate, lt: weekEnd },
+          patientId: { not: null },
+          status: { not: 'blocked' },
+          OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
+        },
+      }),
+      prisma.treatmentSession.findMany({
+        where: {
+          treatmentPlan: {
+            therapistId: therapist.id,
+          },
+          date: { gte: monDate, lt: weekEnd },
+          status: { notIn: ['cancelled', 'expired'] },
+        },
+      }),
+    ]);
 
     const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const weeklyTrend = dayLabels.map((label, idx) => {
       const targetDate = new Date(monDate);
       targetDate.setDate(monDate.getDate() + idx);
-      const count = weekReservations.filter((r) => {
+
+      const resCount = weekReservations.filter((r) => {
         const rDate = new Date(r.date);
         return (
           rDate.getFullYear() === targetDate.getFullYear() &&
@@ -521,7 +547,17 @@ class TherapistService {
           rDate.getDate() === targetDate.getDate()
         );
       }).length;
-      return { day: label, sessions: count };
+
+      const sessCount = weekTreatmentSessions.filter((s) => {
+        const sDate = new Date(s.date);
+        return (
+          sDate.getFullYear() === targetDate.getFullYear() &&
+          sDate.getMonth() === targetDate.getMonth() &&
+          sDate.getDate() === targetDate.getDate()
+        );
+      }).length;
+
+      return { day: label, sessions: Math.max(resCount, sessCount) };
     });
 
     // 7. Monthly Trend (Past 6 months earnings)
@@ -565,36 +601,40 @@ class TherapistService {
       monthlyTrend.push({ month: mLabel, earnings: sum });
     }
 
-    // 8. Consultation Types Distribution
-    const allReservations = await prisma.slotReservation.findMany({
+    // 8. Consultation Types Distribution (from TreatmentSession records)
+    const sessions = await prisma.treatmentSession.findMany({
       where: {
-        therapistId: therapist.id,
-        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
+        treatmentPlan: {
+          therapistId: therapist.id,
+        },
+      },
+      select: {
+        mode: true,
       },
     });
 
-    const totalRes = allReservations.length || 1;
-    const modeCounts = { home_visit: 0, online: 0, clinic: 0 };
-    if (therapist.mode === 'home_visit') modeCounts.home_visit += 1;
-    else if (therapist.mode === 'online') modeCounts.online += 1;
-    else if (therapist.mode === 'clinic') modeCounts.clinic += 1;
+    let homeVal = 0;
+    let onlineVal = 0;
+    let clinicVal = 0;
+
+    if (sessions.length > 0) {
+      const homeCount = sessions.filter((s) => s.mode === 'home_visit').length;
+      const onlineCount = sessions.filter((s) => s.mode === 'online').length;
+
+      homeVal = Math.round((homeCount / sessions.length) * 100);
+      onlineVal = Math.round((onlineCount / sessions.length) * 100);
+      clinicVal = Math.max(0, 100 - homeVal - onlineVal);
+    } else {
+      // Default to 100% for the therapist's primary practice mode
+      if (therapist.mode === 'online') onlineVal = 100;
+      else if (therapist.mode === 'clinic') clinicVal = 100;
+      else homeVal = 100;
+    }
 
     const treatmentModeData = [
-      {
-        name: 'Home Visit',
-        value: Math.round((modeCounts.home_visit / totalRes) * 100) || 50,
-        color: '#014f86',
-      },
-      {
-        name: 'Online',
-        value: Math.round((modeCounts.online / totalRes) * 100) || 30,
-        color: '#a9d6e5',
-      },
-      {
-        name: 'Clinic',
-        value: Math.round((modeCounts.clinic / totalRes) * 100) || 20,
-        color: '#013a63',
-      },
+      { name: 'Home Visit', value: homeVal, color: '#014f86' },
+      { name: 'Online', value: onlineVal, color: '#a9d6e5' },
+      { name: 'Clinic', value: clinicVal, color: '#013a63' },
     ];
 
     return {
