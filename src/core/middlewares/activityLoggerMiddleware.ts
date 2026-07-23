@@ -1,5 +1,5 @@
-import type { Request, Response, NextFunction } from 'express';
 import { logActivity } from '@/modules/log/activity/activity.service';
+import type { NextFunction, Request, Response } from 'express';
 
 const SENSITIVE_KEYS = [
   'password',
@@ -40,6 +40,9 @@ function sanitizeData(obj: unknown): unknown {
   return clean;
 }
 
+const isNonEmptyObject = (val: unknown): boolean =>
+  !!val && typeof val === 'object' && !Array.isArray(val) && Object.keys(val).length > 0;
+
 export function activityLoggerMiddleware(req: Request, res: Response, next: NextFunction) {
   const method = req.method.toUpperCase();
 
@@ -49,41 +52,45 @@ export function activityLoggerMiddleware(req: Request, res: Response, next: Next
   }
 
   res.on('finish', () => {
-    // Only record log for successful operations when a user context is available
-    if (res.statusCode >= 200 && res.statusCode < 300 && req.user?.id) {
-      const fullPath = req.originalUrl || `${req.baseUrl}${req.path}`;
-      const routePath = fullPath.replace('/api/v1', '');
-      const actionTitle = `${method} ${routePath}`;
+    try {
+      // Only record log for successful operations when a user context is available
+      if (res.statusCode >= 200 && res.statusCode < 300 && req.user?.id) {
+        const fullPath = req.originalUrl || `${req.baseUrl}${req.path}`;
+        const routePath = fullPath.replace('/api/v1', '');
+        const actionTitle = `${method} ${routePath}`;
 
-      let type: 'frequent' | 'likely' | 'possible' | 'rare' | 'unlikely' = 'frequent';
-      if (method === 'DELETE') {
-        type = 'rare';
-      } else if (method === 'PUT' || method === 'PATCH') {
-        type = 'possible';
-      } else if (method === 'POST') {
-        type = 'likely';
+        let type: 'frequent' | 'likely' | 'possible' | 'rare' | 'unlikely' = 'frequent';
+        if (method === 'DELETE') {
+          type = 'rare';
+        } else if (method === 'PUT' || method === 'PATCH') {
+          type = 'possible';
+        } else if (method === 'POST') {
+          type = 'likely';
+        }
+
+        const bodyData = sanitizeData(req.body);
+        const queryData = sanitizeData(req.query);
+
+        const payloadSummary = {
+          method,
+          path: routePath,
+          query: isNonEmptyObject(queryData) ? queryData : undefined,
+          body: isNonEmptyObject(bodyData) ? bodyData : undefined,
+          status: res.statusCode,
+        };
+
+        logActivity({
+          userId: req.user.id,
+          title: actionTitle,
+          data: payloadSummary,
+          type,
+          req,
+        }).catch((err) => {
+          req.logger.error('Error recording automatic activity log:', err);
+        });
       }
-
-      const bodyData = sanitizeData(req.body);
-      const queryData = sanitizeData(req.query);
-
-      const payloadSummary = {
-        method,
-        path: routePath,
-        query: Object.keys(queryData as object).length > 0 ? queryData : undefined,
-        body: Object.keys(bodyData as object).length > 0 ? bodyData : undefined,
-        status: res.statusCode,
-      };
-
-      logActivity({
-        userId: req.user.id,
-        title: actionTitle,
-        data: payloadSummary,
-        type,
-        req,
-      }).catch((err) => {
-        console.error('Error recording automatic activity log:', err);
-      });
+    } catch (error) {
+      req.logger.error('Error recording automatic activity log:', error);
     }
   });
 
