@@ -31,6 +31,46 @@ class TherapistSessionController {
     const booking = await therapistSessionService.getBookingById(req.user.id, bookingId);
     return new OkResponse(booking).send(res);
   });
+
+  acceptBooking = asyncHandler(async (req, res, _next) => {
+    isAuth(req);
+    const bookingId = validateSchema(ObjectIdSchema, req.params.id);
+    const result = await therapistSessionService.acceptBooking(req.user.id, bookingId);
+    return new OkResponse(result).send(res);
+  });
+
+  generateOtp = asyncHandler(async (req, res, _next) => {
+    isAuth(req);
+    const bookingId = validateSchema(ObjectIdSchema, req.params.id);
+    const result = await therapistSessionService.generateSessionOtp(req.user.id, bookingId);
+    return new OkResponse(result).send(res);
+  });
+
+  verifyOtp = asyncHandler(async (req, res, _next) => {
+    isAuth(req);
+    const bookingId = validateSchema(ObjectIdSchema, req.params.id);
+    const { otp } = req.body;
+    const result = await therapistSessionService.verifySessionOtp(req.user.id, bookingId, otp);
+    return new OkResponse(result).send(res);
+  });
+
+  endSession = asyncHandler(async (req, res, _next) => {
+    isAuth(req);
+    const bookingId = validateSchema(ObjectIdSchema, req.params.id);
+    const result = await therapistSessionService.endSession(req.user.id, bookingId);
+    return new OkResponse(result).send(res);
+  });
+
+  completePlan = asyncHandler(async (req, res, _next) => {
+    isAuth(req);
+    const planId = validateSchema(ObjectIdSchema, req.params.id);
+    const result = await therapistSessionService.completeTreatmentPlan(
+      req.user.id,
+      planId,
+      req.body,
+    );
+    return new OkResponse(result).send(res);
+  });
 }
 
 export default new TherapistSessionController();

@@ -15,13 +15,11 @@ class PatientLocationService {
         state: data.state,
         postalCode: data.postalCode,
         location: {
-          create: {
-            lat: data.location.lat,
-            lng: data.location.lng,
-          },
+          lat: data.location.lat,
+          lng: data.location.lng,
         },
         patientId: patient.id,
-        country: 'India', // Assuming country is fixed for now, can be made dynamic later
+        country: data.country,
       },
     });
   };

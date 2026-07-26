@@ -434,6 +434,10 @@ model TreatmentPlan {
 
   status                 TreatmentPlanStatus
   suggestedTreatmentDays Int?
+  recommendationRule     String? // e.g. "daily", "alternate_days", "3_times_week"
+  beforeTherapyImg       String?
+  afterTherapyImg        String?
+  finalImprovement       String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -464,14 +468,20 @@ model TreatmentSession {
   condition   String
   DescribedAs String?
 
-  // Fraud Prevention & Logistics
-  startAt DateTime?
+  // Fraud Prevention, OTP & Lifecycle
+  startAt           DateTime?
+  endAt             DateTime?
+  actualStartTime   DateTime?
+  actualEndTime     DateTime?
+  otpCode           String?
+  otpVerified       Boolean   @default(false)
+  otpExpiresAt      DateTime?
+  ratingByPatient   Int?
+  ratingByTherapist Int?
 
   cancelledBy        ReviewedBy?
   cancelledAt        DateTime?
   cancellationReason String?
-
-  endAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -9,13 +9,12 @@ export const updatePatientLocationData = (data: UpdatePatientLocationDTO) => {
   if (data.city !== undefined) updateData.city = data.city;
   if (data.state !== undefined) updateData.state = data.state;
   if (data.postalCode !== undefined) updateData.postalCode = data.postalCode;
+  if (data.country !== undefined) updateData.country = data.country;
 
   if (data.location !== undefined) {
     updateData.location = {
-      update: {
-        ...(data.location.lat !== undefined && { lat: data.location.lat }),
-        ...(data.location.lng !== undefined && { lng: data.location.lng }),
-      },
+      ...(data.location.lat !== undefined && { lat: data.location.lat }),
+      ...(data.location.lng !== undefined && { lng: data.location.lng }),
     };
   }
 

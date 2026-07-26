@@ -226,6 +226,175 @@ class TherapistSessionService {
       clinicalAssessment: treatmentSession?.treatmentPlan?.clinicalAssessment || null,
     };
   }
+
+  async acceptBooking(userId: string, bookingId: string) {
+    const therapist = await prisma.therapist.findUnique({ where: { userId } });
+    if (!therapist) throw new NotFoundError('Therapist not found');
+
+    const res = await prisma.slotReservation.findUnique({ where: { id: bookingId } });
+    if (!res || res.therapistId !== therapist.id) throw new NotFoundError('Booking not found');
+
+    await prisma.slotReservation.update({
+      where: { id: bookingId },
+      data: { status: 'booked' },
+    });
+
+    const session = await prisma.treatmentSession.findFirst({
+      where: { reservationId: bookingId },
+    });
+    if (session) {
+      await prisma.treatmentSession.update({
+        where: { id: session.id },
+        data: { status: 'confirmed' },
+      });
+    }
+
+    return { message: 'Booking accepted successfully' };
+  }
+
+  async generateSessionOtp(userId: string, bookingId: string) {
+    const therapist = await prisma.therapist.findUnique({ where: { userId } });
+    if (!therapist) throw new NotFoundError('Therapist not found');
+
+    let session = await prisma.treatmentSession.findFirst({
+      where: { reservationId: bookingId },
+    });
+
+    if (!session) {
+      session = await prisma.treatmentSession.findUnique({
+        where: { id: bookingId },
+      });
+    }
+
+    if (!session) throw new NotFoundError('Session not found');
+
+    // Generate 6-digit OTP valid for 10 minutes
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    await prisma.treatmentSession.update({
+      where: { id: session.id },
+      data: {
+        otpCode,
+        otpExpiresAt,
+      },
+    });
+
+    return {
+      message: 'OTP sent to patient successfully',
+      otpCode, // Returned for dev testing
+      expiresInMinutes: 10,
+    };
+  }
+
+  async verifySessionOtp(userId: string, bookingId: string, otp: string) {
+    const therapist = await prisma.therapist.findUnique({ where: { userId } });
+    if (!therapist) throw new NotFoundError('Therapist not found');
+
+    let session = await prisma.treatmentSession.findFirst({
+      where: { reservationId: bookingId },
+    });
+
+    if (!session) {
+      session = await prisma.treatmentSession.findUnique({
+        where: { id: bookingId },
+      });
+    }
+
+    if (!session) throw new NotFoundError('Session not found');
+
+    if (session.otpCode !== otp) {
+      throw new Error('Invalid OTP. Please check with the patient and try again.');
+    }
+
+    if (session.otpExpiresAt && new Date() > session.otpExpiresAt) {
+      throw new Error('OTP has expired. Please generate a new OTP.');
+    }
+
+    const now = new Date();
+    const updated = await prisma.treatmentSession.update({
+      where: { id: session.id },
+      data: {
+        otpVerified: true,
+        status: 'active',
+        startAt: now,
+        actualStartTime: now,
+      },
+    });
+
+    return {
+      message: 'OTP verified successfully. Session is now active.',
+      session: updated,
+    };
+  }
+
+  async endSession(userId: string, bookingId: string) {
+    const therapist = await prisma.therapist.findUnique({ where: { userId } });
+    if (!therapist) throw new NotFoundError('Therapist not found');
+
+    let session = await prisma.treatmentSession.findFirst({
+      where: { reservationId: bookingId },
+    });
+
+    if (!session) {
+      session = await prisma.treatmentSession.findUnique({
+        where: { id: bookingId },
+      });
+    }
+
+    if (!session) throw new NotFoundError('Session not found');
+
+    const now = new Date();
+    const startTime = session.actualStartTime || session.startAt || session.createdAt;
+    const durationMinutes = Math.round((now.getTime() - new Date(startTime).getTime()) / 60000);
+
+    const updated = await prisma.treatmentSession.update({
+      where: { id: session.id },
+      data: {
+        status: 'completed',
+        endAt: now,
+        actualEndTime: now,
+      },
+    });
+
+    return {
+      message: 'Session completed successfully.',
+      durationMinutes,
+      session: updated,
+    };
+  }
+
+  async completeTreatmentPlan(
+    userId: string,
+    planId: string,
+    payload: { beforeTherapyImg?: string; afterTherapyImg?: string; finalImprovement?: string },
+  ) {
+    const therapist = await prisma.therapist.findUnique({ where: { userId } });
+    if (!therapist) throw new NotFoundError('Therapist not found');
+
+    const plan = await prisma.treatmentPlan.findUnique({ where: { id: planId } });
+    if (!plan || plan.therapistId !== therapist.id)
+      throw new NotFoundError('Treatment plan not found');
+
+    const updated = await prisma.treatmentPlan.update({
+      where: { id: planId },
+      data: {
+        status: 'completed',
+        ...(payload.beforeTherapyImg !== undefined && {
+          beforeTherapyImg: payload.beforeTherapyImg,
+        }),
+        ...(payload.afterTherapyImg !== undefined && { afterTherapyImg: payload.afterTherapyImg }),
+        ...(payload.finalImprovement !== undefined && {
+          finalImprovement: payload.finalImprovement,
+        }),
+      },
+    });
+
+    return {
+      message: 'Treatment plan closed & completed successfully.',
+      plan: updated,
+    };
+  }
 }
 
 export const therapistSessionService = new TherapistSessionService();

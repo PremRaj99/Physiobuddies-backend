@@ -8,6 +8,8 @@ export const updatePatientDetailData = (data: UpdatePatientDetailsDTO) => {
   if (data.dob !== undefined) updateData.dob = data.dob;
   if (data.gender !== undefined) updateData.gender = data.gender;
   if (data.phone !== undefined) updateData.phone = data.phone;
+  if (data.heightCm !== undefined) updateData.heightCm = data.heightCm;
+  if (data.weightKg !== undefined) updateData.weightKg = data.weightKg;
 
   return updateData;
 };

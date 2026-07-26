@@ -14,6 +14,8 @@ class PatientDetailService {
         gender: data.gender,
         phone: data.phone,
         patientId: patient.id,
+        heightCm: data.heightCm ?? null,
+        weightKg: data.weightKg ?? null,
       },
     });
   };
@@ -30,6 +32,8 @@ class PatientDetailService {
       dob: detail.dob,
       gender: detail.gender,
       phone: detail.phone,
+      heightCm: detail.heightCm,
+      weightKg: detail.weightKg,
     }));
   };
 

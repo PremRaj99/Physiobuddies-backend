@@ -14,8 +14,6 @@ import { verifyJWT } from '@/core/middlewares/verifyJWT';
 
 export const therapistRouter = Router();
 
-therapistRouter.get('/dashboard', verifyJWT, therapistController.getTherapistDashboard);
-
 therapistRouter.use('/articles', therapistArticleRouter);
 therapistRouter.use('/earnings', therapistEarningRouter);
 therapistRouter.use('/faqs', therapistFaqRouter);
@@ -26,6 +24,7 @@ therapistRouter.use('/meta', therapistMetaRouter);
 therapistRouter.use('/slots', slotBlockRouter);
 therapistRouter.use('/leaves', therapistLeaveRouter);
 
+therapistRouter.get('/dashboard', verifyJWT, therapistController.getTherapistDashboard);
 therapistRouter.get('/', therapistController.getAllTherapists);
 therapistRouter.get('/:id', therapistController.getTherapistById);
 therapistRouter.get('/:id/reviews', therapistController.getTherapistReviews);
