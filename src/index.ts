@@ -15,6 +15,7 @@ import { setupLogWebSocket } from './modules/log/log.service';
 import { NotFoundError } from './core/errors/ApiError';
 import { activityLoggerMiddleware } from './core/middlewares/activityLoggerMiddleware';
 import { asyncHandler } from './core/response/responseHandler';
+import { startSessionSchedulers } from './shared/scheduler/sessionScheduler';
 
 const app = express();
 
@@ -73,6 +74,9 @@ const initServer = async () => {
     console.log(`API Gateway is running at http://localhost:${PORT}`);
     console.log(`WebSocket ready at ws://localhost:${PORT}/api/v1/logs/live`);
   });
+
+  // Start background scheduler jobs
+  startSessionSchedulers();
 };
 
 initServer();

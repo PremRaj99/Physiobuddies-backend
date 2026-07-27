@@ -235,8 +235,8 @@ model PatientDetail {
   dob      DateTime
   gender   Gender
   phone    String
-  heightCm  Float?
-  weightKg  Float?
+  heightCm Float?
+  weightKg Float?
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -460,6 +460,7 @@ model TreatmentPlan {
   sessions           TreatmentSession[]
   clinicalAssessment ClinicalAssessment?
   statusLogs         TreatmentPlanStatusLog[]
+  docRecords         TreatmentPlanDocRecord[]
 
   @@index([patientId])
   @@index([therapistId])
@@ -501,11 +502,13 @@ model TreatmentSession {
   addressSnapshot       Json?
 
   // Relations
-  treatmentPlan TreatmentPlan                   @relation(fields: [treatmentPlanId], references: [id])
-  bill          TreatmentSessionBill?
-  review        TreatmentSessionReview?
-  couponUsage   CouponUsage?
-  statusLogs    TreatmentSessionStatusLog[]
+  treatmentPlan     TreatmentPlan                      @relation(fields: [treatmentPlanId], references: [id])
+  bill              TreatmentSessionBill?
+  review            TreatmentSessionReview?
+  couponUsage       CouponUsage?
+  statusLogs        TreatmentSessionStatusLog[]
+  improvementRecord TreatmentSessionImprovementRecord?
+  rescheduleLogs    SessionRescheduleLog[]
 
   // Linked Reservation (Which slot was used)
   reservation              SlotReservation @relation(fields: [reservationId], references: [id])
@@ -515,14 +518,14 @@ model TreatmentSession {
 }
 
 model TreatmentPlanStatusLog {
-  id              String              @id @default(auto()) @map("_id") @db.ObjectId
-  treatmentPlanId String              @db.ObjectId
+  id              String               @id @default(auto()) @map("_id") @db.ObjectId
+  treatmentPlanId String               @db.ObjectId
   fromStatus      TreatmentPlanStatus?
   toStatus        TreatmentPlanStatus
   changedBy       StatusChangeActor
-  changedByUserId String?             @db.ObjectId
+  changedByUserId String?              @db.ObjectId
   reason          String?
-  createdAt       DateTime            @default(now())
+  createdAt       DateTime             @default(now())
 
   treatmentPlan TreatmentPlan @relation(fields: [treatmentPlanId], references: [id])
 
@@ -541,6 +544,63 @@ model TreatmentSessionStatusLog {
 
   session TreatmentSession @relation(fields: [sessionId], references: [id])
 
+  @@index([sessionId])
+}
+
+model SessionRescheduleLog {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+  sessionId String @db.ObjectId
+
+  oldDate      DateTime
+  oldStartHour Int
+  newDate      DateTime
+  newStartHour Int
+
+  oldReservationId String @db.ObjectId
+  newReservationId String @db.ObjectId
+
+  changedBy       StatusChangeActor
+  changedByUserId String?           @db.ObjectId
+  reason          String?
+
+  createdAt DateTime @default(now())
+
+  session TreatmentSession @relation(fields: [sessionId], references: [id])
+
+  @@index([sessionId])
+}
+
+model TreatmentSessionImprovementRecord {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+  sessionId String @unique @db.ObjectId
+
+  painScoreBefore  Int?
+  painScoreAfter   Int
+  improvementNotes String
+  exercisesGiven   String[]
+
+  createdAt DateTime @default(now())
+
+  session TreatmentSession @relation(fields: [sessionId], references: [id])
+}
+
+model TreatmentPlanDocRecord {
+  id              String  @id @default(auto()) @map("_id") @db.ObjectId
+  treatmentPlanId String  @db.ObjectId
+  sessionId       String? @db.ObjectId
+
+  url      String
+  name     String
+  fileType String
+
+  uploadedBy       StatusChangeActor
+  uploadedByUserId String?           @db.ObjectId
+
+  createdAt DateTime @default(now())
+
+  treatmentPlan TreatmentPlan @relation(fields: [treatmentPlanId], references: [id])
+
+  @@index([treatmentPlanId])
   @@index([sessionId])
 }
 

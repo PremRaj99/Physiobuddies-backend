@@ -1,60 +1,66 @@
 import { verifyJWT } from '@/core/middlewares/verifyJWT';
+import { TherapistOnly } from '@/core/middlewares/verifyTherapist';
 import { Router } from 'express';
 import { treatmentSessionReviewRouter } from './review/treatmentSessionReview.route';
+import { treatmentSessionAssessmentRouter } from './assessment/treatmentSessionAssessment.route';
 import treatmentSessionController from './treatmentSession.controller';
-// import { treatmentSessionAssessmentRouter } from './assessment/treatmentSessionAssessment.route';
 
 export const treatmentSessionRouter = Router();
 
 treatmentSessionRouter.use(verifyJWT);
 
+// Sub-routers
 treatmentSessionRouter.use('/', treatmentSessionReviewRouter);
+treatmentSessionRouter.use('/', treatmentSessionAssessmentRouter);
 
-// new Route
-// therapist confirm booking session
-// treatmentSessionRouter.post('/confirm', treatmentSessionController.confirmBookingSession);
+// ──────────────────────────────────────────────
+// Authenticated routes (any role)
+// ──────────────────────────────────────────────
 
-// therapist and patient get Notification before 1hrs of scheduled time
-// treatmentSessionRouter.post('/notification', treatmentSessionController.sendNotification);
+// Get session details
+treatmentSessionRouter.get('/:id', treatmentSessionController.getSession);
 
-// therapist send OTP at arround start time of session
-// treatmentSessionRouter.post('/:id/send-otp', treatmentSessionController.sendOtp);
+// Notification (can be triggered by either party)
+treatmentSessionRouter.post('/:id/notification', treatmentSessionController.sendNotification);
 
-// therapist verify OTP and start therapy
-// treatmentSessionRouter.post('/:id/verify-otp', treatmentSessionController.verifyOtp);
+// Cancel session (therapist or patient)
+treatmentSessionRouter.post('/:id/cancel', treatmentSessionController.cancelSession);
 
-// therapist reschdule slot (in this should show available slots to therapist)
-// treatmentSessionRouter.post('/:id/reschdule-slot', treatmentSessionController.reschduleSlot);
+// No-show (therapist or system)
+treatmentSessionRouter.post('/:id/no-show', treatmentSessionController.markNoShow);
 
-// therapist cancel session (in this should send notification to patient)
-// treatmentSessionRouter.post('/:id/cancel', treatmentSessionController.cancelSession);
+// See more slots for follow-up (patient views available slots for existing plan)
+treatmentSessionRouter.get('/:id/see-more-slots', treatmentSessionController.seeMoreSlots);
 
-// no-show and cancel at start time or before 1 hr of session if not confirm by therapist or after 1 hr of session if started but not end.
-// treatmentSessionRouter.post('/:id/no-show', treatmentSessionController.markNoShow);
+// Book more session on existing treatment plan (patient)
+treatmentSessionRouter.post('/book-more-session', treatmentSessionController.bookMoreSession);
 
-// therapist can generate assessment
-// treatmentSessionRouter.use('/assessment/:sessionId', treatmentSessionAssessmentRouter);
-
-// therapist add docs related to session
-// treatmentSessionRouter.post('/:id/add-docs', treatmentSessionController.addDocs);
-
-// therapist enter improvement record after each treatment session and complete that session
-// treatmentSessionRouter.post('/:id/improvement-record', treatmentSessionController.improvementRecord);
-
-// patient and therapist can give feedback/ review related to session
-// treatmentSessionRouter.post('/:id/feedback', treatmentSessionController.giveFeedback);
-
-// after 1st treatment session patient can see more slots according to recomendation for same treatment plan eg: 5 session alternate day or 5 session in a week or 5 session in 10 days
-// treatmentSessionRouter.post('/:id/see-more-slots', treatmentSessionController.seeMoreSlots);
-
-// after 1st treatment session patient can book more session according to recomendation for same treatment plan by paying
-// treatmentSessionRouter.post('/:id/book-more-session', treatmentSessionController.bookMoreSession);
-
-// if no-show for 1 week then treatment plan will be completed or therapist complete the session
-// treatmentSessionRouter.post('/:id/complete', treatmentSessionController.completeSession);
-
-// legacy routes
+// Legacy routes
 treatmentSessionRouter.post('/:id/start', treatmentSessionController.startSession);
 treatmentSessionRouter.post('/:id/complete', treatmentSessionController.completeSession);
-treatmentSessionRouter.post('/:id/no-show', treatmentSessionController.markNoShow);
-treatmentSessionRouter.post('/:id/cancel', treatmentSessionController.cancelSession);
+
+// ──────────────────────────────────────────────
+// Therapist-only routes
+// ──────────────────────────────────────────────
+treatmentSessionRouter.use(TherapistOnly);
+
+// Therapist confirms a pending booking session
+treatmentSessionRouter.post('/confirm', treatmentSessionController.confirmBookingSession);
+
+// Therapist sends OTP around start time of session
+treatmentSessionRouter.post('/:id/send-otp', treatmentSessionController.sendOtp);
+
+// Therapist verifies OTP to start therapy
+treatmentSessionRouter.post('/:id/verify-otp', treatmentSessionController.verifyOtp);
+
+// Therapist reschedules slot
+treatmentSessionRouter.post('/:id/reschedule-slot', treatmentSessionController.rescheduleSlot);
+
+// Therapist adds documents related to session
+treatmentSessionRouter.post('/:id/add-docs', treatmentSessionController.addDocs);
+
+// Therapist enters improvement record and completes session
+treatmentSessionRouter.post(
+  '/:id/improvement-record',
+  treatmentSessionController.improvementRecord,
+);
