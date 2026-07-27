@@ -135,6 +135,13 @@ enum NotificationPriority {
   high
 }
 
+enum StatusChangeActor {
+  system
+  therapist
+  patient
+  admin
+}
+
 // ----------------------------------------------------------------------
 // USER & AUTH DOMAIN
 // ----------------------------------------------------------------------
@@ -448,10 +455,11 @@ model TreatmentPlan {
   therapistSnapshot      Json // Store therapist details at time of booking for reporting
 
   // Relations
-  patient            Patient             @relation("PatientTreatmentPlans", fields: [patientId], references: [id])
-  therapist          Therapist           @relation("TherapistTreatmentPlans", fields: [therapistId], references: [id])
+  patient            Patient                  @relation("PatientTreatmentPlans", fields: [patientId], references: [id])
+  therapist          Therapist                @relation("TherapistTreatmentPlans", fields: [therapistId], references: [id])
   sessions           TreatmentSession[]
   clinicalAssessment ClinicalAssessment?
+  statusLogs         TreatmentPlanStatusLog[]
 
   @@index([patientId])
   @@index([therapistId])
@@ -493,16 +501,47 @@ model TreatmentSession {
   addressSnapshot       Json?
 
   // Relations
-  treatmentPlan TreatmentPlan           @relation(fields: [treatmentPlanId], references: [id])
+  treatmentPlan TreatmentPlan                   @relation(fields: [treatmentPlanId], references: [id])
   bill          TreatmentSessionBill?
   review        TreatmentSessionReview?
   couponUsage   CouponUsage?
+  statusLogs    TreatmentSessionStatusLog[]
 
   // Linked Reservation (Which slot was used)
   reservation              SlotReservation @relation(fields: [reservationId], references: [id])
   treatmentSessionReviewId String?         @db.ObjectId
 
   @@index([treatmentPlanId])
+}
+
+model TreatmentPlanStatusLog {
+  id              String              @id @default(auto()) @map("_id") @db.ObjectId
+  treatmentPlanId String              @db.ObjectId
+  fromStatus      TreatmentPlanStatus?
+  toStatus        TreatmentPlanStatus
+  changedBy       StatusChangeActor
+  changedByUserId String?             @db.ObjectId
+  reason          String?
+  createdAt       DateTime            @default(now())
+
+  treatmentPlan TreatmentPlan @relation(fields: [treatmentPlanId], references: [id])
+
+  @@index([treatmentPlanId])
+}
+
+model TreatmentSessionStatusLog {
+  id              String            @id @default(auto()) @map("_id") @db.ObjectId
+  sessionId       String            @db.ObjectId
+  fromStatus      SessionStatus?
+  toStatus        SessionStatus
+  changedBy       StatusChangeActor
+  changedByUserId String?           @db.ObjectId
+  reason          String?
+  createdAt       DateTime          @default(now())
+
+  session TreatmentSession @relation(fields: [sessionId], references: [id])
+
+  @@index([sessionId])
 }
 
 // ----------------------------------------------------------------------

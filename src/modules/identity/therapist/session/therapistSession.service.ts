@@ -322,6 +322,17 @@ class TherapistSessionService {
       },
     });
 
+    await prisma.treatmentSessionStatusLog.create({
+      data: {
+        sessionId: session.id,
+        fromStatus: session.status,
+        toStatus: 'active',
+        changedBy: 'therapist',
+        changedByUserId: therapist.userId,
+        reason: 'OTP Verified by Therapist',
+      },
+    });
+
     return {
       message: 'OTP verified successfully. Session is now active.',
       session: updated,
@@ -357,6 +368,17 @@ class TherapistSessionService {
       },
     });
 
+    await prisma.treatmentSessionStatusLog.create({
+      data: {
+        sessionId: session.id,
+        fromStatus: session.status,
+        toStatus: 'completed',
+        changedBy: 'therapist',
+        changedByUserId: therapist.userId,
+        reason: 'Session Ended by Therapist',
+      },
+    });
+
     return {
       message: 'Session completed successfully.',
       durationMinutes,
@@ -387,6 +409,17 @@ class TherapistSessionService {
         ...(payload.finalImprovement !== undefined && {
           finalImprovement: payload.finalImprovement,
         }),
+      },
+    });
+
+    await prisma.treatmentPlanStatusLog.create({
+      data: {
+        treatmentPlanId: plan.id,
+        fromStatus: plan.status,
+        toStatus: 'completed',
+        changedBy: 'therapist',
+        changedByUserId: therapist.userId,
+        reason: 'Treatment Plan Completed by Therapist',
       },
     });
 

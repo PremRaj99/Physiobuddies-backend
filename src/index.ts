@@ -14,6 +14,7 @@ import { Request, Response } from 'express';
 import { setupLogWebSocket } from './modules/log/log.service';
 import { NotFoundError } from './core/errors/ApiError';
 import { activityLoggerMiddleware } from './core/middlewares/activityLoggerMiddleware';
+import { asyncHandler } from './core/response/responseHandler';
 
 const app = express();
 
@@ -45,7 +46,6 @@ app.use(activityLoggerMiddleware);
 
 app.use('/api/v1', router);
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
-app.use(errorHandlerMiddleware);
 
 const clientPath = path.join(__dirname, '../../client2/dist');
 
@@ -57,10 +57,13 @@ if (clientPath && NODE_ENV === 'production') {
     res.sendFile(path.join(clientPath, 'index.html'));
   });
 } else {
-  app.use((_req: Request, _res: Response, next) => {
-    next(new NotFoundError('Route not found'));
-  });
+  app.use(
+    asyncHandler((_req: Request, _res: Response, next) => {
+      next(new NotFoundError('Route not found'));
+    }),
+  );
 }
+app.use(errorHandlerMiddleware);
 
 const server = setupLogWebSocket(app);
 

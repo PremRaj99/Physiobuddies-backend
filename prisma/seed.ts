@@ -6,7 +6,7 @@
  *
  * Run:  npx tsx prisma/seed.ts   (or `npm run seed` once wired in package.json)
  */
-import { PrismaClient, Prisma, ReservationStatus } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();

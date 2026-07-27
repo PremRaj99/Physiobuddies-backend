@@ -283,7 +283,7 @@ class AuthService {
           user: true,
         },
       });
-    } catch (err) {
+    } catch {
       throw new ValidationError('Invalid or expired refresh token');
     }
     if (

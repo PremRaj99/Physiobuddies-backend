@@ -1,10 +1,12 @@
-import { AcceptedResponse } from '@/core/response/ApiResponse';
+import { OkResponse } from '@/core/response/ApiResponse';
 import { asyncHandler } from '@/core/response/responseHandler';
+import webhookService from './webhook.service';
 
 class WebhookController {
-  handlePaymentWebhook = asyncHandler(async (_req, res, _next) => {
-    // Implementation for handling payment webhook
-    return new AcceptedResponse('Webhook received and processed successfully').send(res);
+  handlePaymentWebhook = asyncHandler(async (req, res, _next) => {
+    const payload = req.body || {};
+    const result = await webhookService.handlePaymentWebhook(payload);
+    return new OkResponse(result).send(res);
   });
 }
 

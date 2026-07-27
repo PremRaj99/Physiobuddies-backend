@@ -6,7 +6,7 @@ import {
 } from '@/core/constants/slots';
 import { NotFoundError } from '@/core/errors/ApiError';
 import { convertISTRangeToUTC } from '@/core/utils/time-zone';
-import { SlotManager } from '@/modules/treatment-lifecycle/reservation/slotManagement';
+import { SlotManager } from '@/modules/treatment-lifecycle/reservation/reservation-session/slotManagement';
 import redisClient from '@/shared/redis';
 import { addDays } from 'date-fns';
 import { calculateDistance } from './calculateDistance';

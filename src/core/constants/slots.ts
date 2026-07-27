@@ -11,8 +11,11 @@ export const SLOT_START_HOUR = 6;
 export const SLOT_END_HOUR = 21; // last slot starts at 21:00
 export const TOTAL_SLOTS = SLOT_END_HOUR - SLOT_START_HOUR + 1; // 16
 
-export const HOLD_DURATION_MINUTES = 10;
+export const HOLD_DURATION_MINUTES = 20;
+export const FORM_HOLD_MINUTES = 10;
+export const PAYMENT_HOLD_MINUTES = 10;
 export const MIN_BOOKING_LEAD_MINUTES = 60; // must book at least 1 hour before slot
+export const BOOKING_SESSION_PREFIX = 'booking:session:';
 
 export type SlotCategory = 'morning' | 'evening' | 'night';
 export const SLOT_CATEGORIES: SlotCategory[] = ['morning', 'evening', 'night'];
