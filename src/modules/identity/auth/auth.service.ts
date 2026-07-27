@@ -9,7 +9,7 @@ import geoip from 'fast-geoip';
 import jwt from 'jsonwebtoken';
 import { generatePatientId, generateTherapistId } from './generateBussinessId';
 import { googleUserResponse, oauth2Client } from './googleClient';
-import { checkOTP, checkRateLimits, createAndStoreOTP } from './otp-management';
+import { checkOTP, checkRateLimits, createAndStoreOTP, verifyOTP } from './otp-management';
 import { logActivity } from '@/modules/log/activity/activity.service';
 
 class AuthService {
@@ -357,11 +357,7 @@ class AuthService {
     if (!user) {
       throw new NotFoundError('User not found');
     }
-    const cachedOTP = await checkOTP(email);
-
-    if (!cachedOTP || cachedOTP !== token) {
-      throw new ValidationError('Invalid or expired OTP');
-    }
+    await verifyOTP(email, token);
 
     return true;
   };

@@ -8,9 +8,8 @@ import { patientService } from '@/modules/identity/patient/patient.service';
 import { SlotManager } from '@/modules/treatment-lifecycle/reservation/reservation-session/slotManagement';
 import { redisClient } from '@/shared/redis';
 import { sendMail } from '@/shared/mailHandler';
+import { createAndStoreOTP, verifyOTP } from '@/modules/identity/auth/otp-management';
 import {
-  generateOtp,
-  getOtpExpiry,
   isWithinOtpWindow,
   isWithinCancellationWindow,
   assertTherapistOwnership,
@@ -129,6 +128,7 @@ class SessionService {
 
   // ─────────────────────────────────────────────────────
   // SEND OTP (therapist triggers → patient gets OTP via email)
+  // Managed entirely in Redis (no DB stored OTP) with rate limiting & anti-abuse
   // ─────────────────────────────────────────────────────
   async sendOtp(sessionId: string, therapistUserId: string) {
     const therapist = await therapistService.getTherapistByUserId(therapistUserId);
@@ -152,17 +152,8 @@ class SessionService {
       );
     }
 
-    const otp = generateOtp();
-    const otpExpiresAt = getOtpExpiry(10);
-
-    await prisma.treatmentSession.update({
-      where: { id: sessionId },
-      data: {
-        otpCode: otp,
-        otpVerified: false,
-        otpExpiresAt,
-      },
-    });
+    // Generate & store OTP in Redis with anti-abuse rate limits (60s cooldown, max 3 attempts/hr)
+    const otp = await createAndStoreOTP(sessionId, 'session_otp');
 
     // Send OTP via email to the patient
     const patient = await prisma.patient.findUnique({
@@ -181,7 +172,7 @@ class SessionService {
       await sendMail(
         patient.user.email,
         'Physiobuddies – Your Session OTP',
-        `Your session OTP is: ${otp}. It expires in 10 minutes.`,
+        `Your session OTP is: ${otp}. It expires in 5 minutes.`,
         html,
       );
     }
@@ -189,11 +180,12 @@ class SessionService {
     // TODO: Implement SMS integration for OTP delivery
     // await sendSms(patient.user.phone, `Your Physiobuddies session OTP is: ${otp}`);
 
-    return { message: 'OTP sent to patient successfully.', otpExpiresAt };
+    return { message: 'OTP sent to patient successfully.', expiresInMinutes: 5 };
   }
 
   // ─────────────────────────────────────────────────────
   // VERIFY OTP (therapist submits → confirmed → active)
+  // Managed entirely in Redis (no DB stored OTP)
   // ─────────────────────────────────────────────────────
   async verifyOtp(sessionId: string, otp: string) {
     const session = await prisma.treatmentSession.findUnique({
@@ -204,17 +196,8 @@ class SessionService {
 
     assertSessionStatus(session, ['confirmed'], 'verify OTP');
 
-    if (!session.otpCode) {
-      throw new ValidationError('No OTP has been generated for this session. Send OTP first.');
-    }
-
-    if (session.otpExpiresAt && new Date() > session.otpExpiresAt) {
-      throw new ValidationError('OTP has expired. Please request a new one.');
-    }
-
-    if (session.otpCode !== otp) {
-      throw new ValidationError('Invalid OTP. Please try again.');
-    }
+    // Verifies OTP in Redis & deletes it upon success (throws ValidationError if invalid or expired)
+    await verifyOTP(sessionId, otp, 'session_otp');
 
     statusLogService.validateSessionTransition(SessionStatus.confirmed, SessionStatus.active);
 
@@ -223,7 +206,6 @@ class SessionService {
         where: { id: sessionId },
         data: {
           status: SessionStatus.active,
-          otpVerified: true,
           actualStartTime: new Date(),
         },
       });
@@ -234,7 +216,7 @@ class SessionService {
           fromStatus: SessionStatus.confirmed,
           toStatus: SessionStatus.active,
           changedBy: StatusChangeActor.therapist,
-          reason: 'OTP verified — session started',
+          reason: 'OTP verified via Redis — session started',
         },
       });
     });
