@@ -2,17 +2,23 @@
   "compilerOptions": {
     "target": "es2020",
     "module": "nodenext",
-    "lib": ["es2017", "esnext.asynciterable"],
+    "lib": [
+      "es2017",
+      "esnext.asynciterable"
+    ],
     "outDir": "./dist",
     "rootDir": "./src",
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "moduleResolution": "node16",
+    "ignoreDeprecations": "5.0",
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": [
+        "./src/*"
+      ]
     },
-
     // required checks
     "strict": true,
     "noUnusedLocals": true,
@@ -22,7 +28,6 @@
     "noFallthroughCasesInSwitch": true,
     "allowUnreachableCode": false,
     "noImplicitAny": true,
-
     // Optional checks
     "noUncheckedIndexedAccess": true,
     // "noPropertyAccessFromIndexSignature": true,
@@ -30,12 +35,22 @@
     "noImplicitOverride": true,
     "noErrorTruncation": true,
     "exactOptionalPropertyTypes": true,
-
-    "types": ["node", "express"]
+    "types": [
+      "node",
+      "express"
+    ]
   },
   "ts-node": {
     "files": true
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts"],
-  "exclude": ["node_modules", "dist", "prisma.config.ts", "eslint.config.ts"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "prisma.config.ts",
+    "eslint.config.ts"
+  ]
 }
