@@ -1,5 +1,5 @@
 import { isAuth } from '@/core/middlewares/isAuth';
-import { AcceptedResponse, OkResponse } from '@/core/response/ApiResponse';
+import { OkResponse } from '@/core/response/ApiResponse';
 import { asyncHandler } from '@/core/response/responseHandler';
 import type { NextFunction, Request, Response } from 'express';
 import { paymentService } from './payment.service';
@@ -28,7 +28,7 @@ class PaymentController {
     const signature = req.body.razorpay_signature || req.body.signature;
     const { internalPaymentId, sessionId } = req.body;
 
-    await paymentService.verifyPayment({
+    const result = await paymentService.verifyPayment({
       paymentId,
       orderId,
       signature,
@@ -36,7 +36,7 @@ class PaymentController {
       sessionId,
     });
 
-    return new AcceptedResponse('Payment verified successfully').send(res);
+    return new OkResponse(result).send(res);
   });
 
   refundPayment = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {

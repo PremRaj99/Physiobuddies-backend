@@ -5,7 +5,6 @@ import {
   SLOT_DURATION,
 } from '@/core/constants/slots';
 import { NotFoundError } from '@/core/errors/ApiError';
-import { convertISTRangeToUTC } from '@/core/utils/time-zone';
 import { SlotManager } from '@/modules/treatment-lifecycle/reservation/reservation-session/slotManagement';
 import redisClient from '@/shared/redis';
 import { addDays } from 'date-fns';
@@ -245,11 +244,10 @@ class TherapistService {
   getTherapistAvailability = async (therapistId: string) => {
     const now = new Date();
 
-    // 1. Setup Time Range (3 days)
-    const { startUtc: todayStart, endUtc: threeDaysEnd } = convertISTRangeToUTC(
-      now,
-      addDays(now, 2),
-    );
+    // 1. Setup Time Range (3 days from UTC midnight today)
+    const todayStart = new Date(now);
+    todayStart.setUTCHours(0, 0, 0, 0);
+    const threeDaysEnd = addDays(todayStart, 3);
 
     // Construct slot hold keys for all 16 slots of the 3 days to keep queries parallel
     const { slotKeys, keyToSlotMap } = SlotManager.getSlotHoldKeys(therapistId, todayStart, 3);
