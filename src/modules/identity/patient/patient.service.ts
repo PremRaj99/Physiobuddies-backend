@@ -162,6 +162,66 @@ class PatientService {
       createdAt: patient.createdAt,
     };
   };
+
+  getMyBookings = async (userId: string) => {
+    const patient = await prisma.patient.findFirst({
+      where: { userId, OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }] },
+    });
+
+    if (!patient) {
+      return [];
+    }
+
+    const reservations = await prisma.slotReservation.findMany({
+      where: {
+        patientId: patient.id,
+        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
+      },
+      include: {
+        therapist: {
+          include: {
+            user: { select: { name: true, image: true } },
+          },
+        },
+      },
+      orderBy: { startTime: 'desc' },
+    });
+
+    return reservations.map((res) => {
+      const dateStr = new Date(res.date).toLocaleDateString('en-US', {
+        month: 'short',
+        day: '2-digit',
+        year: 'numeric',
+      });
+
+      const startHourNum = res.startHour || new Date(res.startTime).getHours();
+      const startAmPm = startHourNum >= 12 ? 'PM' : 'AM';
+      const formattedStartHour = startHourNum % 12 || 12;
+      const endHourNum = (startHourNum + 1) % 24;
+      const endAmPm = endHourNum >= 12 ? 'PM' : 'AM';
+      const formattedEndHour = endHourNum % 12 || 12;
+      const timeStr = `${String(formattedStartHour).padStart(2, '0')}:00 ${startAmPm} - ${String(formattedEndHour).padStart(2, '0')}:00 ${endAmPm}`;
+
+      let statusFormatted = res.status.toUpperCase();
+      if (statusFormatted === 'BOOKED') {
+        const isPast = new Date(res.startTime) < new Date();
+        statusFormatted = isPast ? 'COMPLETED' : 'UPCOMING';
+      }
+
+      return {
+        id: res.id,
+        therapistId: res.therapistId,
+        therapistName: res.therapist?.user?.name || 'Therapist',
+        therapistImage: res.therapist?.user?.image || '',
+        therapistGender:
+          (res.therapist?.gender?.toUpperCase() as 'MALE' | 'FEMALE' | 'OTHER') || 'MALE',
+        treatmentMode: res.therapist?.mode || 'home_visit',
+        status: statusFormatted,
+        lastSessionDate: dateStr,
+        lastSessionTime: timeStr,
+      };
+    });
+  };
 }
 
 export const patientService = new PatientService();

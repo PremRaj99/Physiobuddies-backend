@@ -8,6 +8,7 @@ export const patientRouter = Router();
 
 patientRouter.use(verifyJWT);
 patientRouter.get('/info', patientController.patientInfo);
+patientRouter.get('/my-bookings', patientController.getMyBookings);
 
 patientRouter.use('/details', patientDetailsRouter);
 patientRouter.use('/location', patientLocationRouter);

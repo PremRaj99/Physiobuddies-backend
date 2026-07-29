@@ -4,12 +4,16 @@ import { asyncHandler } from '@/core/response/responseHandler';
 import { patientService } from './patient.service';
 
 class PatientController {
-  // Implement patient-specific endpoints here
   patientInfo = asyncHandler(async (req, res, _next) => {
-    // Placeholder for patient info endpoint logic
     isAuth(req);
     const patientInfo = await patientService.patientInfo(req.user.id);
     return new OkResponse(patientInfo).send(res);
+  });
+
+  getMyBookings = asyncHandler(async (req, res, _next) => {
+    isAuth(req);
+    const bookings = await patientService.getMyBookings(req.user.id);
+    return new OkResponse(bookings).send(res);
   });
 }
 
