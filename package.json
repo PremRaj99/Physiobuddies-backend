@@ -46,6 +46,7 @@
     "multer": "^2.0.2",
     "nodemailer": "^8.0.1",
     "prisma": "6.19",
+    "razorpay": "^2.9.8",
     "redis": "^5.10.0",
     "swagger-ui-express": "^5.0.1",
     "tail": "^2.2.6",

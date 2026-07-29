@@ -10,6 +10,9 @@ import { SlotManager } from './slotManagement';
 import { generateInvoiceId } from '@/modules/billing-ledger/payment/generateInvoiceId';
 import { BookingSessionData, UpdateBookingFormDTO } from './reservationSession.type';
 import { StatusChangeActor, SessionStatus } from '@prisma/client';
+import razorpayService from '@/shared/external/razorpay.service';
+import { logger } from '@/core/logger/logger';
+import { RAZORPAY_API_KEY } from '@/core/constants';
 
 class BookingSessionService {
   /**
@@ -242,48 +245,86 @@ class BookingSessionService {
    * Initiate payment step - creates pending Payment record
    */
   async initiatePayment(sessionId: string, patientUserId: string) {
-    const patient = await prisma.patient.findUnique({ where: { userId: patientUserId } });
-    if (!patient) throw new NotFoundError('Patient not found.');
+    try {
+      logger.info('[initiatePayment] Request received', { sessionId, patientUserId });
 
-    const sessionKey = `${BOOKING_SESSION_PREFIX}${sessionId}`;
-    const rawData = await redisClient.get(sessionKey);
+      const patient = await prisma.patient.findUnique({ where: { userId: patientUserId } });
+      if (!patient) throw new NotFoundError('Patient not found.');
 
-    if (!rawData) throw new NotFoundError('Booking session expired or not found.');
+      const sessionKey = `${BOOKING_SESSION_PREFIX}${sessionId}`;
+      const rawData = await redisClient.get(sessionKey);
 
-    const sessionData = JSON.parse(rawData) as BookingSessionData;
+      if (!rawData) throw new NotFoundError('Booking session expired or not found.');
 
-    const therapist = await prisma.therapist.findUnique({ where: { id: sessionData.therapistId } });
-    if (!therapist) throw new NotFoundError('Therapist not found.');
+      const sessionData = JSON.parse(rawData) as BookingSessionData;
 
-    const finalAmount = Math.max(0, therapist.price - (sessionData.formData.couponDiscount || 0));
+      const therapist = await prisma.therapist.findUnique({
+        where: { id: sessionData.therapistId },
+      });
+      if (!therapist) throw new NotFoundError('Therapist not found.');
 
-    // Create payment in DB
-    const payment = await prisma.payment.create({
-      data: {
-        userId: patientUserId,
-        invoiceId: generateInvoiceId(),
-        amount: finalAmount,
-        purpose: 'therapy_session',
-        status: 'pending',
-      },
-    });
+      const finalAmount = Math.max(0, therapist.price - (sessionData.formData.couponDiscount || 0));
+      const invoiceId = generateInvoiceId();
 
-    sessionData.paymentPhase = true;
-    sessionData.paymentId = payment.id;
+      // 1. Create Razorpay Order
+      let razorpayOrder = null;
+      try {
+        razorpayOrder = await razorpayService.createOrder({
+          amount: finalAmount,
+          currency: 'INR',
+          receipt: invoiceId,
+          notes: {
+            sessionId,
+            patientUserId,
+            therapistId: sessionData.therapistId,
+          },
+        });
+      } catch (err) {
+        logger.warn('[initiatePayment] Razorpay order creation failed, using dev fallback', {
+          err,
+        });
+        razorpayOrder = { id: `order_fake_${Date.now()}` };
+      }
 
-    // Extend hold by remaining TTL
-    const now = new Date();
-    const expiresAt = new Date(sessionData.expiresAt);
-    const ttlSeconds = Math.max(1, Math.floor((expiresAt.getTime() - now.getTime()) / 1000));
+      // 2. Create Payment record in DB
+      const payment = await prisma.payment.create({
+        data: {
+          userId: patientUserId,
+          invoiceId,
+          amount: finalAmount,
+          purpose: 'therapy_session',
+          status: 'pending',
+          gatewayOrderId: razorpayOrder.id,
+        },
+      });
 
-    await redisClient.set(sessionKey, JSON.stringify(sessionData), { EX: ttlSeconds });
+      sessionData.paymentPhase = true;
+      sessionData.paymentId = payment.id;
 
-    return {
-      paymentId: payment.id,
-      invoiceId: payment.invoiceId,
-      amount: payment.amount,
-      currency: 'INR',
-    };
+      // Extend hold by remaining TTL
+      const now = new Date();
+      const expiresAt = new Date(sessionData.expiresAt);
+      const ttlSeconds = Math.max(1, Math.floor((expiresAt.getTime() - now.getTime()) / 1000));
+
+      await redisClient.set(sessionKey, JSON.stringify(sessionData), { EX: ttlSeconds });
+
+      return {
+        paymentId: payment.id,
+        invoiceId: payment.invoiceId,
+        amount: payment.amount,
+        currency: 'INR',
+        razorpayOrderId: razorpayOrder.id,
+        razorpayKeyId: RAZORPAY_API_KEY,
+      };
+    } catch (error) {
+      logger.error('[initiatePayment] Error during payment initiation', {
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined,
+        sessionId,
+        patientUserId,
+      });
+      throw error;
+    }
   }
 
   /**

@@ -1,41 +1,89 @@
-import type { Request, Response, NextFunction } from 'express';
-import { paymentService } from './payment.service';
-import { AcceptedResponse, CreatedResponse, OkResponse } from '@/core/response/ApiResponse';
 import { isAuth } from '@/core/middlewares/isAuth';
-import { validateSchema } from '@/core/utils/validateSchema';
-import { ObjectIdSchema } from '@/modules/identity/auth/auth.type';
+import { AcceptedResponse, OkResponse } from '@/core/response/ApiResponse';
+import { asyncHandler } from '@/core/response/responseHandler';
+import type { NextFunction, Request, Response } from 'express';
+import { paymentService } from './payment.service';
 
 class PaymentController {
-  async createPaymentOrder(req: Request, res: Response, _next: NextFunction) {
-    const { amount, currency, userId, purpose } = req.body;
-    await paymentService.createPaymentOrder({ amount, currency, userId, purpose });
-    return new CreatedResponse('Payment order created successfully').send(res);
-  }
+  createPaymentOrder = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+    isAuth(req);
+    const userId = req.user.id;
+    const { amount, currency, purpose, receipt, notes } = req.body;
 
-  async verifyPayment(req: Request, res: Response, _next: NextFunction) {
-    const { paymentId, orderId, signature } = req.body;
-    const isValid = await paymentService.verifyPayment({ paymentId, orderId, signature });
-    if (isValid) {
-      return new AcceptedResponse('Payment verified successfully').send(res);
-    } else {
-      return new AcceptedResponse('Payment verification failed').send(res);
-    }
-  }
+    const result = await paymentService.createPaymentOrder({
+      amount,
+      currency,
+      userId,
+      purpose,
+      receipt,
+      notes,
+    });
 
-  async getPayments(req: Request, res: Response, _next: NextFunction) {
+    return new OkResponse(result).send(res);
+  });
+
+  verifyPayment = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+    const paymentId = req.body.razorpay_payment_id || req.body.paymentId;
+    const orderId = req.body.razorpay_order_id || req.body.orderId || req.body.gatewayOrderId;
+    const signature = req.body.razorpay_signature || req.body.signature;
+    const { internalPaymentId, sessionId } = req.body;
+
+    await paymentService.verifyPayment({
+      paymentId,
+      orderId,
+      signature,
+      internalPaymentId,
+      sessionId,
+    });
+
+    return new AcceptedResponse('Payment verified successfully').send(res);
+  });
+
+  refundPayment = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+    isAuth(req);
+    const id = String(req.params.id);
+    const { amount, reason } = req.body;
+
+    const result = await paymentService.refundPayment({
+      paymentId: id,
+      amount,
+      reason,
+    });
+
+    return new OkResponse(result).send(res);
+  });
+
+  getRefundStatus = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+    isAuth(req);
+    const id = String(req.params.id);
+    const refundId = String(req.params.refundId);
+
+    const result = await paymentService.getRefundStatus(id, refundId);
+    return new OkResponse(result).send(res);
+  });
+
+  checkPaymentStatus = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+    isAuth(req);
+    const id = String(req.params.id);
+
+    const result = await paymentService.checkPaymentStatus(id);
+    return new OkResponse(result).send(res);
+  });
+
+  getPayments = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
     isAuth(req);
     const userId = req.user.id;
     const payments = await paymentService.getPayments(userId);
     return new OkResponse(payments).send(res);
-  }
+  });
 
-  async getPaymentById(req: Request, res: Response, _next: NextFunction) {
+  getPaymentById = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
     isAuth(req);
     const userId = req.user.id;
-    const id = validateSchema(ObjectIdSchema, req.params.id);
+    const id = String(req.params.id);
     const payment = await paymentService.getPaymentById(id, userId);
     return new OkResponse(payment).send(res);
-  }
+  });
 }
 
 export const paymentController = new PaymentController();

@@ -9,6 +9,11 @@ declare global {
       };
       requestId?: string;
       logger: Logger;
+      razorpayVerified?: {
+        orderId: string;
+        paymentId: string;
+      };
+      rawBody?: Buffer;
     }
   }
 }

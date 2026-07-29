@@ -671,7 +671,7 @@ model Payment {
 
   gatewayPaymentId String?
   gatewayOrderId   String?
-  webhookEventId   String? @unique
+  webhookEventId   String?
   processing       Boolean @default(false)
 
   status PaymentStatus
@@ -696,6 +696,7 @@ model Payment {
 
   @@index([userId])
   @@index([gatewayPaymentId, status])
+  @@index([webhookEventId])
 }
 
 model TreatmentSessionBill {

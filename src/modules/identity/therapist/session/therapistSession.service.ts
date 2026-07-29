@@ -1,5 +1,6 @@
 import prisma from '@/config/prisma';
 import { NotFoundError } from '@/core/errors/ApiError';
+import { createAndStoreOTP, verifyOTP } from '@/modules/identity/auth/otp-management';
 
 class TherapistSessionService {
   async getMyBookings(userId: string) {
@@ -268,22 +269,13 @@ class TherapistSessionService {
 
     if (!session) throw new NotFoundError('Session not found');
 
-    // Generate 6-digit OTP valid for 10 minutes
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
-
-    await prisma.treatmentSession.update({
-      where: { id: session.id },
-      data: {
-        otpCode,
-        otpExpiresAt,
-      },
-    });
+    // Generate & store OTP in Redis with anti-abuse rate limits (60s cooldown, max 3 attempts/hr)
+    const otpCode = await createAndStoreOTP(session.id, 'session_otp');
 
     return {
       message: 'OTP sent to patient successfully',
       otpCode, // Returned for dev testing
-      expiresInMinutes: 10,
+      expiresInMinutes: 5,
     };
   }
 
@@ -303,21 +295,14 @@ class TherapistSessionService {
 
     if (!session) throw new NotFoundError('Session not found');
 
-    if (session.otpCode !== otp) {
-      throw new Error('Invalid OTP. Please check with the patient and try again.');
-    }
-
-    if (session.otpExpiresAt && new Date() > session.otpExpiresAt) {
-      throw new Error('OTP has expired. Please generate a new OTP.');
-    }
+    // Verifies OTP in Redis & deletes it upon success (throws ValidationError if invalid or expired)
+    await verifyOTP(session.id, otp, 'session_otp');
 
     const now = new Date();
     const updated = await prisma.treatmentSession.update({
       where: { id: session.id },
       data: {
-        otpVerified: true,
         status: 'active',
-        startAt: now,
         actualStartTime: now,
       },
     });
@@ -329,7 +314,7 @@ class TherapistSessionService {
         toStatus: 'active',
         changedBy: 'therapist',
         changedByUserId: therapist.userId,
-        reason: 'OTP Verified by Therapist',
+        reason: 'OTP Verified by Therapist via Redis',
       },
     });
 

@@ -32,3 +32,8 @@ export const REDIS_HOST = process.env.REDIS_HOST || 'localhost';
 export const REDIS_PORT = process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT) : 6379;
 export const REDIS_USERNAME = process.env.REDIS_USERNAME || '';
 export const REDIS_PASSWORD = process.env.REDIS_PASSWORD || '';
+
+// ------------------ RAZORPAY ------------------
+export const RAZORPAY_API_KEY = process.env.RAZORPAY_API_KEY;
+export const RAZORPAY_API_SECRET = process.env.RAZORPAY_API_SECRET;
+export const RAZORPAY_WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
