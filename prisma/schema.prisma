@@ -457,10 +457,10 @@ model TreatmentPlan {
   // Relations
   patient            Patient                  @relation("PatientTreatmentPlans", fields: [patientId], references: [id])
   therapist          Therapist                @relation("TherapistTreatmentPlans", fields: [therapistId], references: [id])
-  sessions           TreatmentSession[]
-  clinicalAssessment ClinicalAssessment?
-  statusLogs         TreatmentPlanStatusLog[]
-  docRecords         TreatmentPlanDocRecord[]
+  sessions            TreatmentSession[]
+  clinicalAssessments ClinicalAssessment[]
+  statusLogs          TreatmentPlanStatusLog[]
+  docRecords          TreatmentPlanDocRecord[]
 
   @@index([patientId])
   @@index([therapistId])
@@ -1143,7 +1143,7 @@ type CardiopulmonaryVitals {
 
 model ClinicalAssessment {
   id              String        @id @default(auto()) @map("_id") @db.ObjectId
-  treatmentPlanId String        @unique @db.ObjectId
+  treatmentPlanId String        @db.ObjectId
   treatmentPlan   TreatmentPlan @relation(fields: [treatmentPlanId], references: [id], onDelete: Cascade)
 
   // STEP 1: Core Universal Fields

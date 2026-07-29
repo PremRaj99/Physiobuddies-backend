@@ -491,6 +491,20 @@ class SessionService {
     if (!session) throw new NotFoundError('Treatment session not found.');
 
     assertTherapistOwnership(session, therapist.id);
+
+    const sessionsInPlan = await prisma.treatmentSession.findMany({
+      where: { treatmentPlanId: session.treatmentPlanId },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true },
+    });
+
+    const firstSession = sessionsInPlan[0];
+    if (firstSession && firstSession.id === session.id) {
+      throw new ValidationError(
+        'Session improvement record is not accepted for the 1st session. Please complete the clinical assessment instead.',
+      );
+    }
+
     assertSessionStatus(session, ['active'], 'record improvement');
 
     statusLogService.validateSessionTransition(SessionStatus.active, SessionStatus.completed);
@@ -570,20 +584,23 @@ class SessionService {
     const plan = await prisma.treatmentPlan.findUnique({
       where: { id: treatmentPlanId },
       include: {
-        clinicalAssessment: { select: { visitFrequency: true } },
-        therapist: { select: { id: true } },
+        clinicalAssessments: {
+          select: { visitFrequency: true },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
       },
     });
     if (!plan) throw new NotFoundError('Treatment plan not found.');
 
     // Use the therapist's availability endpoint logic
     // Returns available slots from today + 3 days
-    const availability = await therapistService.getTherapistAvailability(plan.therapist.id);
+    const availability = await therapistService.getTherapistAvailability(plan.therapistId);
 
     return {
       treatmentPlanId: plan.id,
       recommendationRule: plan.recommendationRule,
-      visitFrequency: plan.clinicalAssessment?.visitFrequency || null,
+      visitFrequency: plan.clinicalAssessments?.[0]?.visitFrequency || null,
       suggestedTreatmentDays: plan.suggestedTreatmentDays,
       availableSlots: availability,
     };

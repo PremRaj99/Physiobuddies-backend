@@ -183,7 +183,15 @@ class TherapistSessionService {
       include: {
         treatmentPlan: {
           include: {
-            clinicalAssessment: true,
+            clinicalAssessments: {
+              orderBy: { createdAt: 'desc' },
+            },
+            docRecords: true,
+            sessions: {
+              include: {
+                improvementRecord: true,
+              },
+            },
           },
         },
       },
@@ -196,6 +204,10 @@ class TherapistSessionService {
       const isPast = new Date(res.startTime) < new Date();
       statusFormatted = isPast ? 'COMPLETED' : 'UPCOMING';
     }
+
+    const improvementRecords = (treatmentSession?.treatmentPlan?.sessions || [])
+      .map((s) => (s.improvementRecord ? { ...s.improvementRecord, sessionDate: s.date } : null))
+      .filter(Boolean);
 
     return {
       id: res.id,
@@ -229,7 +241,10 @@ class TherapistSessionService {
           status: statusFormatted.toLowerCase(),
         },
       ],
-      clinicalAssessment: treatmentSession?.treatmentPlan?.clinicalAssessment || null,
+      documents: treatmentSession?.treatmentPlan?.docRecords || [],
+      clinicalAssessments: treatmentSession?.treatmentPlan?.clinicalAssessments || [],
+      clinicalAssessment: treatmentSession?.treatmentPlan?.clinicalAssessments?.[0] || null,
+      improvementRecords,
     };
   }
 
