@@ -1,6 +1,11 @@
 import { NotFoundError } from '@/core/errors/ApiError';
 import { CreateCouponDTO, UpdateCouponDTO } from './adminCoupon.types';
 import prisma from '@/config/prisma';
+import {
+  buildCouponAssignmentsData,
+  buildCouponTherapistConstraintsData,
+  buildCouponUpdatePayload,
+} from './adminCoupon.helper';
 
 class AdminCouponService {
   async getAllCoupons() {
@@ -24,7 +29,6 @@ class AdminCouponService {
   }
 
   async createCoupon(data: CreateCouponDTO) {
-    // Logic to create a coupon
     await prisma.$transaction(async (txn) => {
       const coupon = await txn.coupon.create({
         data: {
@@ -36,23 +40,19 @@ class AdminCouponService {
           isGlobal: data.isGlobal || false,
         },
       });
-      await txn.couponAssignment.createMany({
-        data: data.patientIds
-          ? data.patientIds.map((id) => ({
-              patientId: id,
-              couponId: coupon.id,
-              type: 'whitelist',
-            }))
-          : [],
-      });
-      await txn.couponTherapist.createMany({
-        data: data.therapistIds
-          ? data.therapistIds.map((id) => ({
-              therapistId: id,
-              couponId: coupon.id,
-            }))
-          : [],
-      });
+
+      const assignmentsData = buildCouponAssignmentsData(coupon.id, data.patientIds);
+      if (assignmentsData.length > 0) {
+        await txn.couponAssignment.createMany({ data: assignmentsData });
+      }
+
+      const therapistConstraintsData = buildCouponTherapistConstraintsData(
+        coupon.id,
+        data.therapistIds,
+      );
+      if (therapistConstraintsData.length > 0) {
+        await txn.couponTherapist.createMany({ data: therapistConstraintsData });
+      }
     });
 
     return;
@@ -66,54 +66,34 @@ class AdminCouponService {
       throw new NotFoundError('Coupon not found');
     }
 
-    const updateData = Object.fromEntries(
-      Object.entries({
-        code: data.code,
-        minPrice: data.minPrice,
-        discount: data.discount,
-        expiresOn:
-          data.expiresOn !== undefined
-            ? data.expiresOn === '' || data.expiresOn === null
-              ? null
-              : new Date(data.expiresOn)
-            : undefined,
-        status: data.status,
-        isGlobal: data.isGlobal,
-      }).filter(([_, v]) => v !== undefined),
-    );
+    const updateData = buildCouponUpdatePayload(data);
 
     await prisma.$transaction(async (txn) => {
       await txn.coupon.update({
         where: { id },
         data: updateData,
       });
+
       if (data.patientIds !== undefined) {
         await txn.couponAssignment.deleteMany({ where: { couponId: id } });
-        if (data.patientIds) {
-          await txn.couponAssignment.createMany({
-            data: data.patientIds.map((patientId) => ({
-              patientId: patientId,
-              couponId: id,
-              type: 'whitelist',
-            })),
-          });
+        const assignmentsData = buildCouponAssignmentsData(id, data.patientIds);
+        if (assignmentsData.length > 0) {
+          await txn.couponAssignment.createMany({ data: assignmentsData });
         }
       }
+
       if (data.therapistIds !== undefined) {
         await txn.couponTherapist.deleteMany({ where: { couponId: id } });
-        if (data.therapistIds) {
-          await txn.couponTherapist.createMany({
-            data: data.therapistIds.map((therapistId) => ({
-              therapistId: therapistId,
-              couponId: id,
-            })),
-          });
+        const therapistConstraintsData = buildCouponTherapistConstraintsData(id, data.therapistIds);
+        if (therapistConstraintsData.length > 0) {
+          await txn.couponTherapist.createMany({ data: therapistConstraintsData });
         }
       }
     });
 
     return;
   }
+
   async deleteCoupon(id: string) {
     await prisma.$transaction(async (txn) => {
       await txn.couponAssignment.deleteMany({ where: { couponId: id } });

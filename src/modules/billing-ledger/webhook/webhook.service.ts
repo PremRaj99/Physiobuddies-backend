@@ -4,6 +4,7 @@ import { logger } from '@/core/logger/logger';
 import razorpayService from '@/shared/external/razorpay.service';
 import { ValidationError } from '@/core/errors/ApiError';
 import { RAZORPAY_WEBHOOK_SECRET } from '@/core/constants';
+import { extractWebhookPaymentInfo } from './webhook.helper';
 
 export interface RazorpayWebhookPayload {
   event?: string;
@@ -64,10 +65,8 @@ class WebhookService {
     const paymentEntity = body?.payload?.payment?.entity;
     const refundEntity = body?.payload?.refund?.entity;
 
-    const gatewayPaymentId = paymentEntity?.id || body?.gatewayPaymentId || body?.paymentId;
-    const gatewayOrderId = paymentEntity?.order_id || body?.gatewayOrderId;
+    const { gatewayPaymentId, gatewayOrderId, sessionId } = extractWebhookPaymentInfo(body);
     const notes = paymentEntity?.notes || {};
-    const sessionId = notes.sessionId || body?.sessionId;
     const internalPaymentId = notes.paymentId || body?.paymentId;
 
     // 2. Handle Razorpay Specific Events

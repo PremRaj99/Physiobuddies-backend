@@ -5,11 +5,11 @@ import { NotFoundError, ValidationError } from '@/core/errors/ApiError';
 import { sendMail } from '@/shared/mailHandler';
 import bcrypt from 'bcrypt';
 import type { Request } from 'express';
-import geoip from 'fast-geoip';
 import jwt from 'jsonwebtoken';
 import { generatePatientId, generateTherapistId } from './generateBussinessId';
 import { googleUserResponse, oauth2Client } from './googleClient';
 import { checkOTP, checkRateLimits, createAndStoreOTP, verifyOTP } from './otp-management';
+import { buildAuthSessionPayload } from './auth.helper';
 import { logActivity } from '@/modules/log/activity/activity.service';
 
 class AuthService {
@@ -42,7 +42,7 @@ class AuthService {
       },
     );
 
-    const geo = await geoip.lookup(req.ip || '');
+    const sessionPayload = await buildAuthSessionPayload(user.id, refreshToken, req);
 
     if (refreshTokenParams) {
       try {
@@ -51,12 +51,12 @@ class AuthService {
             refreshToken: refreshTokenParams,
           },
           data: {
-            refreshToken: refreshToken,
-            ip: req.ip || '',
-            agent: req.get('User-Agent') || '',
-            expiredAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-            location: geo ? `${geo.city}, ${geo.region}, ${geo.country}` : '', // You can use a geoip library to get location from IP
-            lastLoggedAt: new Date(),
+            refreshToken: sessionPayload.refreshToken,
+            ip: sessionPayload.ip,
+            agent: sessionPayload.agent,
+            expiredAt: sessionPayload.expiredAt,
+            location: sessionPayload.location,
+            lastLoggedAt: sessionPayload.lastLoggedAt,
           },
         });
       } catch {
@@ -64,15 +64,7 @@ class AuthService {
       }
     } else {
       await prisma.authSession.create({
-        data: {
-          userId: user.id,
-          refreshToken: refreshToken,
-          ip: req.ip || '',
-          agent: req.get('User-Agent') || '',
-          expiredAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-          location: geo ? `${geo.city}, ${geo.region}, ${geo.country}` : '', // You can use a geoip library to get location from IP
-          lastLoggedAt: new Date(),
-        },
+        data: sessionPayload,
       });
     }
 

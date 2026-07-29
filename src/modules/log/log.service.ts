@@ -6,21 +6,14 @@ import http from 'http';
 import { logger } from '@/core/logger/logger';
 import type { Express } from 'express';
 
+import { parseLogLine } from './log.helper';
+
 const logFilePath = path.join(process.cwd(), 'logs', 'combined.log');
 
 export const getLogs = () => {
   if (!fs.existsSync(logFilePath)) return [];
   const file = fs.readFileSync(logFilePath, 'utf-8');
-  return file
-    .split('\n')
-    .filter(Boolean)
-    .map((line) => {
-      try {
-        return JSON.parse(line);
-      } catch {
-        return { message: line };
-      }
-    });
+  return file.split('\n').filter(Boolean).map(parseLogLine);
 };
 
 export const setupLogWebSocket = (app: Express) => {

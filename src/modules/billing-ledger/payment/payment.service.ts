@@ -5,36 +5,24 @@ import razorpayService from '@/shared/external/razorpay.service';
 import { bookingSessionService } from '@/modules/treatment-lifecycle/reservation/reservation-session/reservationSession.service';
 import { logger } from '@/core/logger/logger';
 import { CreatePaymentOrderDTO, VerifyPaymentDTO, RefundPaymentDTO } from './payment.type';
+import { buildRazorpayOrderOptions, formatPaymentVerificationResponse } from './payment.helper';
 
 class PaymentService {
   /**
    * Create a Payment DB record and corresponding Razorpay Order
    */
-  createPaymentOrder = async ({
-    amount,
-    currency = 'INR',
-    userId,
-    purpose = 'therapy_session',
-    receipt,
-    notes,
-  }: CreatePaymentOrderDTO) => {
+  createPaymentOrder = async (dto: CreatePaymentOrderDTO) => {
+    const { amount, currency = 'INR', userId, purpose = 'therapy_session' } = dto;
+
     if (amount <= 0) {
       throw new ValidationError('Payment amount must be greater than zero.');
     }
 
     const invoiceId = generateInvoiceId();
+    const orderOptions = buildRazorpayOrderOptions(dto, invoiceId);
 
     // 1. Create Razorpay Order
-    const razorpayOrder = await razorpayService.createOrder({
-      amount,
-      currency,
-      receipt: receipt || invoiceId,
-      notes: {
-        userId,
-        purpose,
-        ...notes,
-      },
-    });
+    const razorpayOrder = await razorpayService.createOrder(orderOptions);
 
     // 2. Create Payment record in Database
     const payment = await prisma.payment.create({
@@ -123,19 +111,13 @@ class PaymentService {
       reservationResult = await bookingSessionService.finalizeBooking(finalSessionId, paymentId);
     }
 
-    return {
-      verified: true,
-      paymentId,
-      orderId,
-      reservation: reservationResult,
-    };
+    return formatPaymentVerificationResponse(paymentId, orderId, reservationResult);
   };
 
   /**
    * Process full or partial refund for a payment
    */
   refundPayment = async ({ paymentId, amount, reason }: RefundPaymentDTO) => {
-    // Locate payment record by DB ID or Gateway Payment ID
     const payment = await prisma.payment.findFirst({
       where: {
         OR: [{ id: paymentId }, { gatewayPaymentId: paymentId }],
@@ -156,14 +138,12 @@ class PaymentService {
       throw new ValidationError('Payment has no associated gateway transaction ID.');
     }
 
-    // Process refund on Razorpay
     const refundOptions: { amount?: number; notes?: Record<string, string> } = {};
     if (amount !== undefined) refundOptions.amount = amount;
     if (reason) refundOptions.notes = { reason };
 
     const refund = await razorpayService.initiateRefund(payment.gatewayPaymentId, refundOptions);
 
-    // Update payment record in database
     const updatedPayment = await prisma.payment.update({
       where: { id: payment.id },
       data: {
@@ -217,7 +197,6 @@ class PaymentService {
 
     const gatewayData = await razorpayService.fetchPayment(payment.gatewayPaymentId);
 
-    // Sync DB status if changed on gateway
     if (gatewayData.status === 'captured' && payment.status !== 'completed') {
       return await prisma.payment.update({
         where: { id: payment.id },

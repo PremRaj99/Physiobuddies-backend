@@ -1,5 +1,6 @@
 import prisma from '@/config/prisma';
 import { NotFoundError } from '@/core/errors/ApiError';
+import { formatUserBlockResponseMessage, getToggledUserStatus } from './adminUser.helper';
 
 class AdminUserService {
   async getAllUsers() {
@@ -33,7 +34,7 @@ class AdminUserService {
       throw new NotFoundError('User not found');
     }
 
-    const nextStatus = user.status === 'blocked' ? 'active' : 'blocked';
+    const nextStatus = getToggledUserStatus(user.status);
 
     await prisma.user.update({
       where: { id: userId },
@@ -41,7 +42,8 @@ class AdminUserService {
         status: nextStatus,
       },
     });
-    return `${user.name || 'User'} has been ${nextStatus === 'blocked' ? 'blocked' : 'unblocked'} successfully.`;
+
+    return formatUserBlockResponseMessage(user.name, nextStatus);
   }
 }
 

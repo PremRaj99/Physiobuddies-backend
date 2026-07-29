@@ -12,6 +12,9 @@ import { addDays } from 'date-fns';
 import { calculateDistance } from './calculateDistance';
 import { TherapistQueryDTO } from './therapist.type';
 
+import { buildTherapistQueryWhereClause, processAndSortTherapists } from './therapist.helper';
+import { getPaginationParams } from '@/shared/helper/pagination.helper';
+
 class TherapistService {
   getTherapistByUserId = async (userId: string) => {
     const therapist = await prisma.therapist.findUnique({
@@ -22,73 +25,22 @@ class TherapistService {
   };
 
   getAllTherapists = async (query: TherapistQueryDTO) => {
-    // default pagination values
-    const limit = query.limit || 10;
-    const page = query.page || 1;
-    const skip = (page - 1) * limit;
+    const { skip, limit } = getPaginationParams(query.page, query.limit, 10);
+    const where = buildTherapistQueryWhereClause(query);
 
     // Initial lightweight query to filter and sort by distance if needed
     const lightweightTherapists = await prisma.therapist.findMany({
-      where: {
-        ...(query.specialization?.length &&
-          query.specialization?.length > 0 && {
-            meta: { specialization: { hasSome: query.specialization } },
-          }),
-        ...(query.price &&
-          query.price[0] !== undefined &&
-          query.price[1] !== undefined && {
-            price: {
-              gte: query.price[0],
-              lte: query.price[1],
-            },
-          }),
-        ...(query.experience &&
-          query.experience[0] !== undefined &&
-          query.experience[1] !== undefined && {
-            meta: {
-              experience: {
-                gte: query.experience[0],
-                lte: query.experience[1],
-              },
-            },
-          }),
-        ...(query.mode && { mode: query.mode }),
-        ...(query.gender && { gender: query.gender }),
-      },
+      where,
       select: {
         id: true,
         location: true,
         price: true,
         rating: true,
-        meta: { select: { experience: true } }, // Needed if sorting by experience
+        meta: { select: { experience: true } },
       },
     });
 
-    // Calculate distance for each therapist and filter/sort if needed
-    let processed = lightweightTherapists.map((t) => {
-      const lat = Number((t.location as { lat: number })?.lat);
-      const lng = Number((t.location as { lng: number })?.lng);
-      const distance =
-        query.lng && query.lat && lat && lng
-          ? calculateDistance(query.lat, query.lng, lat, lng)
-          : null;
-
-      return { ...t, distance };
-    });
-
-    if (query.radius) {
-      processed = processed.filter((t) => t.distance !== null && t.distance <= query.radius!);
-    }
-
-    if (query.sort === 'distance') {
-      processed.sort((a, b) => (a.distance || 0) - (b.distance || 0));
-    } else if (query.sort === 'rating') {
-      processed.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-    } else if (query.sort === 'price') {
-      processed.sort((a, b) => a.price - b.price);
-    } else if (query.sort === 'experience') {
-      processed.sort((a, b) => (b.meta?.experience || 0) - (a.meta?.experience || 0));
-    }
+    const processed = processAndSortTherapists(lightweightTherapists, query);
 
     // Paginate the results
     const paginatedItems = processed.slice(skip, skip + limit);

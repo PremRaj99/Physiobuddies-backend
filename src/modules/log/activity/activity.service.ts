@@ -1,14 +1,7 @@
 import type { Request } from 'express';
 import prisma from '@/config/prisma';
-
-function getTimestampFromObjectId(id: string): Date {
-  try {
-    const timestamp = parseInt(id.substring(0, 8), 16) * 1000;
-    return new Date(timestamp);
-  } catch {
-    return new Date();
-  }
-}
+import { getTimestampFromObjectId } from '@/shared/helper/mongo.helper';
+import { extractClientIp, stringifyPayload } from './activity.helper';
 
 export interface LogActivityInput {
   userId: string;
@@ -36,20 +29,10 @@ export async function logActivity(input: LogActivityInput) {
 
     if (!userId) return;
 
-    const ipAddress =
-      customIp ||
-      (req?.headers['x-forwarded-for'] as string)?.split(',')[0] ||
-      req?.ip ||
-      req?.socket?.remoteAddress ||
-      '127.0.0.1';
-
-    const dataStr = typeof data === 'string' ? data : JSON.stringify(data);
-    const beforeStr = before
-      ? typeof before === 'string'
-        ? before
-        : JSON.stringify(before)
-      : null;
-    const afterStr = after ? (typeof after === 'string' ? after : JSON.stringify(after)) : null;
+    const ipAddress = extractClientIp(req, customIp);
+    const dataStr = (stringifyPayload(data) || '') as string;
+    const beforeStr = stringifyPayload(before);
+    const afterStr = stringifyPayload(after);
 
     await prisma.activity.create({
       data: {

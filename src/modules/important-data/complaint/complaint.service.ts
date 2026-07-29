@@ -1,16 +1,8 @@
 import prisma from '@/config/prisma';
 import { NotFoundError } from '@/core/errors/ApiError';
 import { logActivity } from '@/modules/log/activity/activity.service';
+import { formatComplaintRecord, getTimestampFromObjectId } from './complaint.helper';
 import { CreateComplaintDTO } from './complaint.type';
-
-function getTimestampFromObjectId(id: string): Date {
-  try {
-    const timestamp = parseInt(id.substring(0, 8), 16) * 1000;
-    return new Date(timestamp);
-  } catch {
-    return new Date();
-  }
-}
 
 class ComplaintService {
   async getUserComplaints(userId: string, isAdmin = false) {
@@ -24,22 +16,7 @@ class ComplaintService {
       },
     });
 
-    return complaints.map((complaint) => ({
-      id: complaint.id,
-      userId: complaint.userId,
-      user: complaint.user,
-      type: complaint.type,
-      description: complaint.description,
-      status: complaint.status,
-      createdAt:
-        (complaint as { createdAt?: Date }).createdAt || getTimestampFromObjectId(complaint.id),
-      reply: complaint.reply.map((r) => ({
-        id: r.id,
-        role: r.role,
-        message: r.message,
-        createdAt: (r as { createdAt?: Date }).createdAt || getTimestampFromObjectId(r.id),
-      })),
-    }));
+    return complaints.map(formatComplaintRecord);
   }
 
   async createComplaint(userId: string, data: CreateComplaintDTO) {
@@ -63,25 +40,12 @@ class ComplaintService {
 
     await logActivity({
       userId,
-      title: 'Complaint Submitted',
-      data: `Submitted complaint (${data.type}): ${data.description}`,
-      type: 'possible',
+      title: 'Complaint Created',
+      type: 'frequent',
+      data: `Complaint ID: ${complaint.id}, Type: ${data.type}`,
     });
 
-    return {
-      id: complaint.id,
-      type: complaint.type,
-      description: complaint.description,
-      status: complaint.status,
-      createdAt:
-        (complaint as { createdAt?: Date }).createdAt || getTimestampFromObjectId(complaint.id),
-      reply: complaint.reply.map((r) => ({
-        id: r.id,
-        role: r.role,
-        message: r.message,
-        createdAt: (r as { createdAt?: Date }).createdAt || getTimestampFromObjectId(r.id),
-      })),
-    };
+    return formatComplaintRecord(complaint);
   }
 
   async addReply(
@@ -90,12 +54,16 @@ class ComplaintService {
     message: string,
     role: 'user' | 'support' = 'user',
   ) {
-    const where = role === 'support' ? { id: complaintId } : { id: complaintId, userId };
-    const complaint = await prisma.complaint.findFirst({
-      where,
+    const complaint = await prisma.complaint.findUnique({
+      where: { id: complaintId },
     });
 
     if (!complaint) {
+      throw new NotFoundError('Complaint not found');
+    }
+
+    const isAdmin = role === 'support';
+    if (!isAdmin && complaint.userId !== userId) {
       throw new NotFoundError('Complaint not found');
     }
 
@@ -107,11 +75,18 @@ class ComplaintService {
       },
     });
 
+    if (isAdmin && complaint.status === 'pending') {
+      await prisma.complaint.update({
+        where: { id: complaintId },
+        data: { status: 'processing' },
+      });
+    }
+
     await logActivity({
       userId,
       title: 'Complaint Reply Added',
-      data: `Added reply to complaint ${complaintId}`,
       type: 'frequent',
+      data: `Complaint ID: ${complaintId}`,
     });
 
     return {
@@ -120,6 +95,30 @@ class ComplaintService {
       message: reply.message,
       createdAt: (reply as { createdAt?: Date }).createdAt || getTimestampFromObjectId(reply.id),
     };
+  }
+
+  async updateStatus(
+    complaintId: string,
+    status: 'pending' | 'processing' | 'completed' | 'rejected',
+  ) {
+    const complaint = await prisma.complaint.findUnique({
+      where: { id: complaintId },
+    });
+
+    if (!complaint) {
+      throw new NotFoundError('Complaint not found');
+    }
+
+    const updated = await prisma.complaint.update({
+      where: { id: complaintId },
+      data: { status },
+      include: {
+        reply: { orderBy: { id: 'asc' } },
+        user: { select: { name: true, email: true } },
+      },
+    });
+
+    return formatComplaintRecord(updated);
   }
 }
 

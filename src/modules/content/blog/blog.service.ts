@@ -1,31 +1,17 @@
 import prisma from '@/config/prisma';
 import { NotFoundError, ValidationError } from '@/core/errors/ApiError';
+import { getPaginationParams } from '@/shared/helper/pagination.helper';
+import {
+  buildBlogSearchWhereClause,
+  buildBlogUpdatePayload,
+  formatBlogDetailResponse,
+} from './blog.helper';
 import { CreateBlogDTO, ListBlogQueryDTO, UpdateBlogDTO } from './blog.type';
 
 class BlogService {
   async getAllBlogs(query: ListBlogQueryDTO) {
-    const page = query.page ?? 1;
-    const limit = query.limit ?? 100;
-    const skip = (page - 1) * limit;
-
-    const where: {
-      OR?: {
-        title?: { contains: string; mode: 'insensitive' };
-        summary?: { contains: string; mode: 'insensitive' };
-      }[];
-      tags?: { contains: string; mode: 'insensitive' };
-    } = {};
-
-    if (query.search) {
-      where.OR = [
-        { title: { contains: query.search, mode: 'insensitive' } },
-        { summary: { contains: query.search, mode: 'insensitive' } },
-      ];
-    }
-
-    if (query.tag) {
-      where.tags = { contains: query.tag, mode: 'insensitive' };
-    }
+    const { skip, limit } = getPaginationParams(query.page, query.limit, 100);
+    const where = buildBlogSearchWhereClause(query);
 
     const blogs = await prisma.blog.findMany({
       where,
@@ -71,26 +57,7 @@ class BlogService {
       data: { views: { increment: 1 } },
     });
 
-    return {
-      id: blog.id,
-      title: blog.title,
-      content: blog.content,
-      summary: blog.summary,
-      tags: blog.tags,
-      thumbnail: blog.thumbnail,
-      slug: blog.slug,
-      readTime: blog.readTime,
-      views: blog.views + 1,
-      createdAt: blog.createdAt,
-      updatedAt: blog.updatedAt,
-      likes: blog._count.likes,
-      reviews: blog.reviews.map((review) => ({
-        id: review.id,
-        userName: review.author.name,
-        comment: review.comment,
-        createdAt: review.createdAt,
-      })),
-    };
+    return formatBlogDetailResponse(blog);
   }
 
   async likeBlog(blogId: string, userId: string) {
@@ -174,17 +141,7 @@ class BlogService {
       }
     }
 
-    const updateData = Object.fromEntries(
-      Object.entries({
-        title: data.title,
-        content: data.content,
-        summary: data.summary,
-        tags: data.tags,
-        thumbnail: data.thumbnail,
-        slug: data.slug,
-        readTime: data.readTime,
-      }).filter(([_, v]) => v !== undefined),
-    );
+    const updateData = buildBlogUpdatePayload(data);
 
     await prisma.blog.update({
       where: { id },
