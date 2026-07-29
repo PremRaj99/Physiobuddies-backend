@@ -23,6 +23,7 @@ class TherapistSessionService {
             details: true,
           },
         },
+        treatmentSession: true,
       },
       orderBy: { startTime: 'desc' },
     });
@@ -51,7 +52,9 @@ class TherapistSessionService {
       const timeStr = `${String(formattedStartHour).padStart(2, '0')}:00 ${startAmPm} - ${String(formattedEndHour).padStart(2, '0')}:00 ${endAmPm}`;
 
       let statusFormatted = res.status.toUpperCase();
-      if (statusFormatted === 'BOOKED') {
+      if (res.treatmentSession?.status) {
+        statusFormatted = res.treatmentSession.status.toUpperCase();
+      } else if (statusFormatted === 'BOOKED') {
         const isPast = new Date(res.startTime) < new Date();
         statusFormatted = isPast ? 'COMPLETED' : 'UPCOMING';
       }
@@ -175,12 +178,6 @@ class TherapistSessionService {
     const formattedEndHour = endHourNum % 12 || 12;
     const timeStr = `${String(formattedStartHour).padStart(2, '0')}:00 ${startAmPm} - ${String(formattedEndHour).padStart(2, '0')}:00 ${endAmPm}`;
 
-    let statusFormatted = res.status.toUpperCase();
-    if (statusFormatted === 'BOOKED') {
-      const isPast = new Date(res.startTime) < new Date();
-      statusFormatted = isPast ? 'COMPLETED' : 'UPCOMING';
-    }
-
     const treatmentSession = await prisma.treatmentSession.findFirst({
       where: { reservationId: res.id },
       include: {
@@ -191,6 +188,14 @@ class TherapistSessionService {
         },
       },
     });
+
+    let statusFormatted = res.status.toUpperCase();
+    if (treatmentSession?.status) {
+      statusFormatted = treatmentSession.status.toUpperCase();
+    } else if (statusFormatted === 'BOOKED') {
+      const isPast = new Date(res.startTime) < new Date();
+      statusFormatted = isPast ? 'COMPLETED' : 'UPCOMING';
+    }
 
     return {
       id: res.id,
