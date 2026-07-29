@@ -5,6 +5,7 @@ import {
   SLOT_DURATION,
 } from '@/core/constants/slots';
 import { NotFoundError } from '@/core/errors/ApiError';
+import { getSlotStartDateTime } from '@/core/utils/time-zone';
 import { SlotManager } from '@/modules/treatment-lifecycle/reservation/reservation-session/slotManagement';
 import redisClient from '@/shared/redis';
 import { addDays } from 'date-fns';
@@ -332,14 +333,10 @@ class TherapistService {
       const daySlots = [];
 
       for (const slotDef of availableSlots) {
-        const slotStart = new Date(currentDay);
-        slotStart.setUTCHours(slotDef.startHour, slotDef.startMinute, 0, 0);
+        const slotDateTime = getSlotStartDateTime(dateKey, slotDef.startHour);
 
-        // 1. Skip if the time has already passed (for today)
-        if (slotStart <= now) continue;
-
-        // 2. Skip if less than 1 hour lead time
-        const leadTimeMs = slotStart.getTime() - now.getTime();
+        // Skip if slot has passed or is less than 1 hour (60 minutes) in advance
+        const leadTimeMs = slotDateTime.getTime() - now.getTime();
         if (leadTimeMs < MIN_BOOKING_LEAD_MINUTES * 60 * 1000) continue;
 
         // 3. Determine Status from reservation map or Redis holds

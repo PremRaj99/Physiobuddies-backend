@@ -29,3 +29,15 @@ export function convertISTRangeToUTC(dateFrom: Date, dateTo: Date) {
     endUtc: fromZonedTime(endIST, IST),
   };
 }
+
+/**
+ * Constructs a Date object in IST (+05:30) for a given date string/Date and start hour (6-21).
+ */
+export function getSlotStartDateTime(date: string | Date, startHour: number): Date {
+  const dateStr =
+    typeof date === 'string'
+      ? (date.split('T')[0] as string)
+      : (date.toISOString().split('T')[0] as string);
+  const hourStr = String(startHour).padStart(2, '0');
+  return new Date(`${dateStr}T${hourStr}:00:00+05:30`);
+}

@@ -1,7 +1,13 @@
 import { redisClient } from '@/shared/redis';
-import { getSlotHoldKey, HOLD_DURATION_MINUTES, ALL_SLOTS } from '@/core/constants/slots';
+import {
+  getSlotHoldKey,
+  HOLD_DURATION_MINUTES,
+  MIN_BOOKING_LEAD_MINUTES,
+  ALL_SLOTS,
+} from '@/core/constants/slots';
 import prisma from '@/config/prisma';
 import { ValidationError } from '@/core/errors/ApiError';
+import { getSlotStartDateTime } from '@/core/utils/time-zone';
 import { addDays, addMinutes } from 'date-fns';
 import { randomBytes } from 'crypto';
 
@@ -20,11 +26,17 @@ export class SlotManager {
     dateOnly: Date,
     startHour: number,
   ): Promise<{ reservationId: string; expiresAt: Date }> {
-    const holdKey = getSlotHoldKey(
-      therapistId,
-      dateOnly.toISOString().split('T')[0] as string,
-      startHour,
-    );
+    // 0. Validate time constraint: Slot must start at least 1 hour (60 minutes) in advance
+    const dateStr = dateOnly.toISOString().split('T')[0] as string;
+    const slotDateTime = getSlotStartDateTime(dateOnly, startHour);
+    const now = new Date();
+
+    const leadTimeMs = slotDateTime.getTime() - now.getTime();
+    if (leadTimeMs < MIN_BOOKING_LEAD_MINUTES * 60 * 1000) {
+      throw new ValidationError('Slots must be booked at least 1 hour in advance.');
+    }
+
+    const holdKey = getSlotHoldKey(therapistId, dateStr, startHour);
 
     // 1. Check Redis for existing hold
     const existingHoldId = await redisClient.get(holdKey);
@@ -57,7 +69,6 @@ export class SlotManager {
     }
 
     // 3. Create Hold in Redis
-    const now = new Date();
     const expiresAt = addMinutes(now, HOLD_DURATION_MINUTES);
     const reservationId = randomBytes(12).toString('hex');
 
