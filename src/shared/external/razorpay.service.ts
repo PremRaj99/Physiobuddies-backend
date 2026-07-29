@@ -66,6 +66,19 @@ class RazorPayService {
   }
 
   /**
+   * Fetch order details from Razorpay
+   */
+  async fetchOrder(orderId: string) {
+    const client = this.getClient();
+    try {
+      return await client.orders.fetch(orderId);
+    } catch (error) {
+      logger.error('Error fetching Razorpay order', { error, orderId });
+      throw new ValidationError('Order not found on Razorpay.');
+    }
+  }
+
+  /**
    * Verify HMAC-SHA256 signature returned by Razorpay Checkout
    */
   verifyPaymentSignature({

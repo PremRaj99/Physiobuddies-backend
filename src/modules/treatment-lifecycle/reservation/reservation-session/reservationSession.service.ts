@@ -3,7 +3,8 @@ import { ValidationError, NotFoundError } from '@/core/errors/ApiError';
 import { redisClient } from '@/shared/redis';
 import {
   BOOKING_SESSION_PREFIX,
-  HOLD_DURATION_MINUTES,
+  FORM_HOLD_MINUTES,
+  PAYMENT_HOLD_MINUTES,
   getSlotHoldKey,
 } from '@/core/constants/slots';
 import { SlotManager } from './slotManagement';
@@ -16,7 +17,7 @@ import { RAZORPAY_API_KEY } from '@/core/constants';
 
 class BookingSessionService {
   /**
-   * Step 1: Create a secure booking session in Redis
+   * Step 1: Create a secure booking session in Redis (10 minutes initial form hold)
    */
   async createBookingSession(data: {
     patientId: string;
@@ -59,7 +60,7 @@ class BookingSessionService {
     };
 
     const sessionKey = `${BOOKING_SESSION_PREFIX}${reservationId}`;
-    const ttlSeconds = HOLD_DURATION_MINUTES * 60; // 20 minutes
+    const ttlSeconds = FORM_HOLD_MINUTES * 60; // 10 minutes form filling hold
 
     await redisClient.set(sessionKey, JSON.stringify(sessionData), { EX: ttlSeconds });
 
@@ -242,7 +243,7 @@ class BookingSessionService {
   }
 
   /**
-   * Initiate payment step - creates pending Payment record
+   * Initiate payment step - extends Redis TTL by 10 mins for payment completion
    */
   async initiatePayment(sessionId: string, patientUserId: string) {
     try {
@@ -301,10 +302,11 @@ class BookingSessionService {
       sessionData.paymentPhase = true;
       sessionData.paymentId = payment.id;
 
-      // Extend hold by remaining TTL
+      // Extend hold by 10 minutes for payment phase
       const now = new Date();
-      const expiresAt = new Date(sessionData.expiresAt);
-      const ttlSeconds = Math.max(1, Math.floor((expiresAt.getTime() - now.getTime()) / 1000));
+      const paymentExpiresAt = new Date(now.getTime() + PAYMENT_HOLD_MINUTES * 60 * 1000);
+      sessionData.expiresAt = paymentExpiresAt.toISOString();
+      const ttlSeconds = PAYMENT_HOLD_MINUTES * 60; // 10 minutes
 
       await redisClient.set(sessionKey, JSON.stringify(sessionData), { EX: ttlSeconds });
 
@@ -329,19 +331,55 @@ class BookingSessionService {
 
   /**
    * Finalize booking after payment success (called by Webhook or Payment Verification)
+   * Retrieves data strictly from Redis. If Redis session expired, automatically refunds payment.
    */
   async finalizeBooking(sessionId: string, gatewayPaymentId?: string) {
     const sessionKey = `${BOOKING_SESSION_PREFIX}${sessionId}`;
     const rawData = await redisClient.get(sessionKey);
 
     if (!rawData) {
-      // Check if already processed
+      // 1. Check if already processed and saved in DB
       const existingReservation = await prisma.slotReservation.findUnique({
         where: { id: sessionId },
       });
       if (existingReservation) {
         return { reservationId: sessionId, message: 'Booking already finalized.' };
       }
+
+      // 2. Redis session expired! Automatically issue Razorpay refund if payment ID exists
+      logger.warn('[finalizeBooking] Booking session expired in Redis. Refunding payment.', {
+        sessionId,
+        gatewayPaymentId,
+      });
+
+      if (gatewayPaymentId) {
+        try {
+          await razorpayService.initiateRefund(gatewayPaymentId, {
+            notes: { reason: 'Payment received after booking session expired', sessionId },
+          });
+          logger.info('[finalizeBooking] Auto-refund issued for expired session payment.', {
+            sessionId,
+            gatewayPaymentId,
+          });
+        } catch (refundErr) {
+          logger.error('[finalizeBooking] Auto-refund call failed for expired session', {
+            refundErr,
+            gatewayPaymentId,
+          });
+        }
+
+        // Update payment status to refunded
+        await prisma.payment.updateMany({
+          where: {
+            OR: [{ gatewayPaymentId }, { id: sessionId }],
+          },
+          data: {
+            status: 'refunded',
+            refundedAt: new Date(),
+          },
+        });
+      }
+
       throw new ValidationError('Booking session expired or not found in Redis.');
     }
 
@@ -370,6 +408,8 @@ class BookingSessionService {
       : await prisma.patientLocation.findFirst({ where: { patientId } });
 
     const dateOnly = new Date(date);
+    dateOnly.setUTCHours(0, 0, 0, 0);
+
     const slotStart = new Date(dateOnly);
     slotStart.setUTCHours(startHour, 0, 0, 0);
     const slotEnd = new Date(slotStart.getTime() + 40 * 60 * 1000);
@@ -432,7 +472,7 @@ class BookingSessionService {
         },
       });
 
-      // Log Session status changes: null -> pending, then pending -> confirmed
+      // Log Session status changes
       await tx.treatmentSessionStatusLog.create({
         data: {
           sessionId: session.id,
