@@ -23,3 +23,20 @@ paymentDocs.get('/:id', {
   params: ParamsObjectIdSchema,
   success: success(200),
 });
+
+paymentDocs.post('/:id/refund', {
+  summary: 'Process Payment Refund',
+  params: ParamsObjectIdSchema,
+  success: success(200),
+});
+
+paymentDocs.get('/:id/refund/:refundId', {
+  summary: 'Get Refund Status',
+  success: success(200),
+});
+
+paymentDocs.get('/:id/check-status', {
+  summary: 'Check Payment Status',
+  params: ParamsObjectIdSchema,
+  success: success(200),
+});

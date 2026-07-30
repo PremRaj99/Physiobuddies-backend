@@ -24,12 +24,12 @@ adminDocs.get('/payouts', {
 });
 
 adminDocs.post('/payouts/:id/process', {
-  summary: 'Process Payouts',
+  summary: 'Process Payout',
   params: ParamsObjectIdSchema,
   success: success(202),
 });
 
-adminDocs.post('/refund/:sessionId', {
+adminDocs.post('/refunds/:sessionId', {
   summary: 'Process Refund',
   params: ParamsObjectIdSchema,
   success: success(202),

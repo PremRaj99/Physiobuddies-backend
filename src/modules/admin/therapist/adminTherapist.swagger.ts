@@ -15,6 +15,12 @@ adminTherapistDocs.patch('/:id/verify', {
   success: success(202),
 });
 
+adminTherapistDocs.patch('/:id/update', {
+  summary: 'Update Therapist',
+  params: ParamsObjectIdSchema,
+  success: success(202),
+});
+
 adminTherapistDocs.patch('/:id/commission-rate', {
   summary: 'Update Commission Rate',
   params: ParamsObjectIdSchema,
