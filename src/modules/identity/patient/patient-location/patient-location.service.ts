@@ -1,4 +1,5 @@
 import prisma from '@/config/prisma';
+import { softDeleteWhereClause } from '@/core/utils/softdelete';
 import { patientService } from '../patient.service';
 import type { PatientLocationDTO, UpdatePatientLocationDTO } from '../patient.type';
 import { updatePatientLocationData } from './patient-location.helper';
@@ -26,7 +27,7 @@ class PatientLocationService {
 
   getPatientLocations = async (userId: string) => {
     const data = await prisma.patientLocation.findMany({
-      where: { OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }], patient: { userId } },
+      where: softDeleteWhereClause({ patient: { userId } }),
       orderBy: { updatedAt: 'desc' },
     });
 

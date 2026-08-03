@@ -1,12 +1,11 @@
 import prisma from '@/config/prisma';
+import { softDeleteWhereClause } from '@/core/utils/softdelete';
 import { NotFoundError } from '@/core/errors/ApiError';
 
 class TherapistRegistrationService {
   async getAllRegistrations() {
     const therapists = await prisma.therapist.findMany({
-      where: {
-        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
-      },
+      where: softDeleteWhereClause(),
       include: {
         user: {
           select: {
@@ -41,10 +40,7 @@ class TherapistRegistrationService {
 
   async getRegistrationById(id: string) {
     const therapist = await prisma.therapist.findFirst({
-      where: {
-        id,
-        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
-      },
+      where: softDeleteWhereClause({ id }),
       include: {
         user: {
           select: {

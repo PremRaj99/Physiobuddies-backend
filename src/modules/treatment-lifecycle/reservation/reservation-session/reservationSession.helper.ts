@@ -1,4 +1,5 @@
 import prisma from '@/config/prisma';
+import { softDeleteWhereClause } from '@/core/utils/softdelete';
 import { ValidationError, NotFoundError } from '@/core/errors/ApiError';
 import { redisClient } from '@/shared/redis';
 import { BOOKING_SESSION_PREFIX, getSlotHoldKey } from '@/core/constants/slots';
@@ -241,12 +242,11 @@ export async function executeFinalizeBookingTransaction(
  */
 export async function applyCouponDiscount(sessionData: BookingSessionData, couponCode: string) {
   const coupon = await prisma.coupon.findFirst({
-    where: {
+    where: softDeleteWhereClause({
       code: couponCode.toUpperCase(),
       status: 'active',
       expiresOn: { gt: new Date() },
-      OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
-    },
+    }),
   });
 
   if (!coupon) {

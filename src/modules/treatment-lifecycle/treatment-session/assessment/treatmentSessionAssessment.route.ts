@@ -11,9 +11,8 @@ treatmentSessionAssessmentRouter.get(
   treatmentSessionAssessmentController.getAssessment,
 );
 
-treatmentSessionAssessmentRouter.use(TherapistOnly);
-
 treatmentSessionAssessmentRouter.post(
   '/:id/assessment',
+  TherapistOnly,
   treatmentSessionAssessmentController.createOrUpdateAssessment,
 );

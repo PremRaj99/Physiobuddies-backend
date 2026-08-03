@@ -1,4 +1,5 @@
 import prisma from '@/config/prisma';
+import { softDeleteWhereClause } from '@/core/utils/softdelete';
 import { patientService } from '../patient.service';
 import type { PatientDetailsDTO, UpdatePatientDetailsDTO } from '../patient.type';
 import { updatePatientDetailData } from './patient-detail.helper';
@@ -21,10 +22,9 @@ class PatientDetailService {
   };
   getPatientDetails = async (userId: string) => {
     const details = await prisma.patientDetail.findMany({
-      where: {
+      where: softDeleteWhereClause({
         patient: { userId },
-        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
-      },
+      }),
     });
     return details.map((detail) => ({
       id: detail.id,
@@ -40,22 +40,20 @@ class PatientDetailService {
   updatePatientDetail = async (detailId: string, userId: string, data: UpdatePatientDetailsDTO) => {
     const updateData = updatePatientDetailData(data);
 
-    await prisma.patientDetail.update({
-      where: {
+    await prisma.patientDetail.updateMany({
+      where: softDeleteWhereClause({
         id: detailId,
-        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
         patient: { userId },
-      },
+      }),
       data: updateData,
     });
   };
   deletePatientDetail = async (detailId: string, userId: string) => {
-    await prisma.patientDetail.update({
-      where: {
+    await prisma.patientDetail.updateMany({
+      where: softDeleteWhereClause({
         id: detailId,
-        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
         patient: { userId },
-      },
+      }),
       data: { deletedAt: new Date() },
     });
   };

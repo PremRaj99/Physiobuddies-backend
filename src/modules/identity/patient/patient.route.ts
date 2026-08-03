@@ -9,6 +9,7 @@ export const patientRouter = Router();
 patientRouter.use(verifyJWT);
 patientRouter.get('/info', patientController.patientInfo);
 patientRouter.get('/my-bookings', patientController.getMyBookings);
+patientRouter.get('/my-bookings/:id', patientController.getBookingById);
 
 patientRouter.use('/details', patientDetailsRouter);
 patientRouter.use('/location', patientLocationRouter);

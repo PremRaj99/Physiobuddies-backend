@@ -1,4 +1,5 @@
 import prisma from '@/config/prisma';
+import { softDeleteWhereClause } from '@/core/utils/softdelete';
 import {
   getSlotsForSchedule,
   MIN_BOOKING_LEAD_MINUTES,
@@ -17,8 +18,8 @@ import { getPaginationParams } from '@/shared/helper/pagination.helper';
 
 class TherapistService {
   getTherapistByUserId = async (userId: string) => {
-    const therapist = await prisma.therapist.findUnique({
-      where: { userId, OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }] },
+    const therapist = await prisma.therapist.findFirst({
+      where: softDeleteWhereClause({ userId }),
     });
     if (!therapist) throw new NotFoundError('Therapist not found');
     return therapist;
@@ -209,11 +210,10 @@ class TherapistService {
     const [therapistSlot, reservations, leaves, redisHolds] = await Promise.all([
       prisma.therapistSlot.findUnique({ where: { therapistId } }),
       prisma.slotReservation.findMany({
-        where: {
+        where: softDeleteWhereClause({
           therapistId,
           date: { gte: todayStart, lte: threeDaysEnd },
-          OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
-        },
+        }),
       }),
       prisma.therapistLeave.findMany({
         where: {
@@ -324,7 +324,7 @@ class TherapistService {
 
   getDashboardData = async (userId: string) => {
     const therapist = await prisma.therapist.findFirst({
-      where: { userId, OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }] },
+      where: softDeleteWhereClause({ userId }),
       include: {
         user: { select: { name: true, email: true } },
       },
@@ -342,11 +342,10 @@ class TherapistService {
 
     // 1. Today's Sessions from SlotReservations
     const todayReservations = await prisma.slotReservation.findMany({
-      where: {
+      where: softDeleteWhereClause({
         therapistId: therapist.id,
         date: { gte: todayStart, lte: todayEnd },
-        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
-      },
+      }),
       include: {
         patient: {
           include: {
@@ -428,16 +427,14 @@ class TherapistService {
     // 5. Ratings & Reviews Average
     const [therapistReviews, patientReviews] = await Promise.all([
       prisma.therapistReview.findMany({
-        where: {
+        where: softDeleteWhereClause({
           therapistId: therapist.id,
-          OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
-        },
+        }),
       }),
       prisma.patientReview.findMany({
-        where: {
+        where: softDeleteWhereClause({
           therapistId: therapist.id,
-          OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
-        },
+        }),
       }),
     ]);
 
@@ -462,13 +459,12 @@ class TherapistService {
 
     const [weekReservations, weekTreatmentSessions] = await Promise.all([
       prisma.slotReservation.findMany({
-        where: {
+        where: softDeleteWhereClause({
           therapistId: therapist.id,
           date: { gte: monDate, lt: weekEnd },
           patientId: { not: null },
           status: { not: 'blocked' },
-          OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
-        },
+        }),
       }),
       prisma.treatmentSession.findMany({
         where: {

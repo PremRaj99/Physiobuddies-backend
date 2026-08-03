@@ -585,7 +585,7 @@ class SessionService {
       where: { id: treatmentPlanId },
       include: {
         clinicalAssessments: {
-          select: { visitFrequency: true },
+          select: { visitFrequency: true, suggestedTreatmentDays: true },
           orderBy: { createdAt: 'desc' },
           take: 1,
         },
@@ -599,9 +599,8 @@ class SessionService {
 
     return {
       treatmentPlanId: plan.id,
-      recommendationRule: plan.recommendationRule,
       visitFrequency: plan.clinicalAssessments?.[0]?.visitFrequency || null,
-      suggestedTreatmentDays: plan.suggestedTreatmentDays,
+      suggestedTreatmentDays: plan.clinicalAssessments?.[0]?.suggestedTreatmentDays || 0,
       availableSlots: availability,
     };
   }

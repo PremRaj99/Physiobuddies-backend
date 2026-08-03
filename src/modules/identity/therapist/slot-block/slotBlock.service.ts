@@ -1,4 +1,5 @@
 import prisma from '@/config/prisma';
+import { softDeleteWhereClause } from '@/core/utils/softdelete';
 import { ValidationError } from '@/core/errors/ApiError';
 import { ALL_SLOTS, isValidSlotHour, SLOT_DURATION, getSlotHoldKey } from '@/core/constants/slots';
 import { therapistService } from '../therapist.service';
@@ -34,12 +35,11 @@ class SlotBlockService {
 
     // Check for existing non-deleted reservations at these hours in DB
     const existing = await prisma.slotReservation.findMany({
-      where: {
+      where: softDeleteWhereClause({
         therapistId: therapist.id,
         date: dateOnly,
         startHour: { in: startHours },
-        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
-      },
+      }),
     });
 
     const existingHours = new Set(existing.map((r) => r.startHour));
@@ -84,13 +84,12 @@ class SlotBlockService {
     dateOnly.setUTCHours(0, 0, 0, 0);
 
     const result = await prisma.slotReservation.updateMany({
-      where: {
+      where: softDeleteWhereClause({
         therapistId: therapist.id,
         date: dateOnly,
         startHour: { in: startHours },
         status: 'blocked',
-        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
-      },
+      }),
       data: { deletedAt: new Date() },
     });
 
@@ -139,12 +138,11 @@ class SlotBlockService {
 
     // 2. Check blocked slot reservations
     const blockedReservations = await prisma.slotReservation.findMany({
-      where: {
+      where: softDeleteWhereClause({
         therapistId: therapist.id,
         date: dateOnly,
         status: 'blocked',
-        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
-      },
+      }),
     });
 
     const blockedHours = blockedReservations.map((r) => r.startHour);
@@ -161,12 +159,11 @@ class SlotBlockService {
     today.setUTCHours(0, 0, 0, 0);
 
     const blockedReservations = await prisma.slotReservation.findMany({
-      where: {
+      where: softDeleteWhereClause({
         therapistId: therapist.id,
         status: 'blocked',
         date: { gte: today },
-        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
-      },
+      }),
       orderBy: { date: 'asc' },
     });
 

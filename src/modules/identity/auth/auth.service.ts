@@ -1,4 +1,5 @@
 import prisma from '@/config/prisma';
+import { softDeleteWhereClause } from '@/core/utils/softdelete';
 import { ACCESS_TOKEN_SECRET, REFRESH_TOKEN_SECRET } from '@/core/constants';
 import { THERAPIST_PRICE } from '@/core/constants/site-setting';
 import { NotFoundError, ValidationError } from '@/core/errors/ApiError';
@@ -17,11 +18,10 @@ class AuthService {
 
   getUserByEmail = async (email: string) => {
     return await prisma.user.findFirst({
-      where: {
+      where: softDeleteWhereClause({
         email: email,
-        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
         status: 'active',
-      },
+      }),
     });
   };
 

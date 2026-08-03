@@ -12,10 +12,18 @@ class TreatmentSessionAssessmentController {
   });
 
   createOrUpdateAssessment = asyncHandler(async (req, res, _next) => {
-    const sessionId = validateSchema(ObjectIdSchema, req.params.id);
-    const assessmentData = req.body;
-    await sessionAssessmentService.createOrUpdateAssessment(sessionId, assessmentData);
-    return new AcceptedResponse('Assessment created or updated successfully').send(res);
+    try {
+      const sessionId = validateSchema(ObjectIdSchema, req.params.id);
+      const assessmentData = req.body;
+      console.log('[Assessment POST] sessionId:', sessionId);
+      await sessionAssessmentService.createOrUpdateAssessment(sessionId, assessmentData);
+      return new AcceptedResponse('Assessment created or updated successfully').send(res);
+    } catch (err: unknown) {
+      const error = err as Error;
+      console.error('[Assessment POST ERROR]:', error?.message || err);
+      console.error(error?.stack || err);
+      throw err;
+    }
   });
 }
 

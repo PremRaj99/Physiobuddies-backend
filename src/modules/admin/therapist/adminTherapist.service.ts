@@ -1,4 +1,5 @@
 import prisma from '@/config/prisma';
+import { softDeleteWhereClause } from '@/core/utils/softdelete';
 import { NotFoundError } from '@/core/errors/ApiError';
 import { UpdateAdminTherapistDTO, UpdateCommissionRateDTO } from './adminTherapist.types';
 import { updateTherapistData } from './adminTherapist.helper';
@@ -6,9 +7,7 @@ import { updateTherapistData } from './adminTherapist.helper';
 class AdminTherapistService {
   async getAllTherapists() {
     const therapists = prisma.therapist.findMany({
-      where: {
-        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
-      },
+      where: softDeleteWhereClause(),
       orderBy: {
         createdAt: 'desc',
       },

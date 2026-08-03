@@ -1,6 +1,16 @@
 import prisma from '@/config/prisma';
 import { NotFoundError } from '@/core/errors/ApiError';
 import { createAndStoreOTP, verifyOTP } from '@/modules/identity/auth/otp-management';
+import {
+  TREATMENT_PLAN_INCLUDE,
+  TREATMENT_SESSION_WITH_PLAN_INCLUDE,
+} from '@/core/utils/booking.utils';
+import { softDeleteWhereClause } from '@/core/utils/softdelete';
+import {
+  THERAPIST_BOOKING_RESERVATION_INCLUDE,
+  formatTherapistBookings,
+  formatTherapistBookingDetail,
+} from './therapistSession.helper';
 
 class TherapistSessionService {
   async getMyBookings(userId: string) {
@@ -13,10 +23,9 @@ class TherapistSessionService {
     }
 
     const reservations = await prisma.slotReservation.findMany({
-      where: {
+      where: softDeleteWhereClause({
         therapistId: therapist.id,
-        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
-      },
+      }),
       include: {
         patient: {
           include: {
@@ -28,50 +37,7 @@ class TherapistSessionService {
       orderBy: { startTime: 'desc' },
     });
 
-    return reservations.map((res) => {
-      const patientDetail = (
-        res.patient as unknown as {
-          details?: Array<{ name?: string; dob?: Date; gender?: string }>;
-        }
-      )?.details?.[0];
-      const dob = patientDetail?.dob;
-      const age = dob ? new Date().getFullYear() - new Date(dob).getFullYear() : null;
-
-      const dateStr = new Date(res.date).toLocaleDateString('en-US', {
-        month: 'long',
-        day: '2-digit',
-        year: 'numeric',
-      });
-
-      const startHourNum = res.startHour || new Date(res.startTime).getHours();
-      const startAmPm = startHourNum >= 12 ? 'PM' : 'AM';
-      const formattedStartHour = startHourNum % 12 || 12;
-      const endHourNum = (startHourNum + 1) % 24;
-      const endAmPm = endHourNum >= 12 ? 'PM' : 'AM';
-      const formattedEndHour = endHourNum % 12 || 12;
-      const timeStr = `${String(formattedStartHour).padStart(2, '0')}:00 ${startAmPm} - ${String(formattedEndHour).padStart(2, '0')}:00 ${endAmPm}`;
-
-      let statusFormatted = res.status.toUpperCase();
-      if (res.treatmentSession?.status) {
-        statusFormatted = res.treatmentSession.status.toUpperCase();
-      } else if (statusFormatted === 'BOOKED') {
-        const isPast = new Date(res.startTime) < new Date();
-        statusFormatted = isPast ? 'COMPLETED' : 'UPCOMING';
-      }
-
-      return {
-        id: res.id,
-        patientID: res.patient?.patientId || 'PAT-101',
-        patientName: patientDetail?.name || 'Patient',
-        patientGender:
-          (patientDetail?.gender?.toUpperCase() as 'MALE' | 'FEMALE' | 'OTHER') || 'MALE',
-        patientAge: age,
-        treatmentMode: therapist.mode || 'home_visit',
-        status: statusFormatted,
-        lastSessionDate: dateStr,
-        lastSessionTime: timeStr,
-      };
-    });
+    return formatTherapistBookings(reservations, therapist.mode);
   }
 
   async getTodaySessions(therapistId: string) {
@@ -81,11 +47,10 @@ class TherapistSessionService {
     endOfDay.setHours(23, 59, 59, 999);
 
     const reservations = await prisma.slotReservation.findMany({
-      where: {
+      where: softDeleteWhereClause({
         therapistId,
-        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
         date: { gte: startOfDay, lte: endOfDay },
-      },
+      }),
       include: {
         patient: {
           include: { details: true },
@@ -101,11 +66,10 @@ class TherapistSessionService {
     const now = new Date();
 
     const reservations = await prisma.slotReservation.findMany({
-      where: {
+      where: softDeleteWhereClause({
         therapistId,
-        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
         startTime: { gte: now },
-      },
+      }),
       include: {
         patient: {
           include: { details: true },
@@ -128,124 +92,36 @@ class TherapistSessionService {
 
     const res = await prisma.slotReservation.findUnique({
       where: { id: bookingId },
-      include: {
-        patient: {
-          include: {
-            details: true,
-            locations: true,
-          },
-        },
-      },
+      include: THERAPIST_BOOKING_RESERVATION_INCLUDE,
     });
 
     if (!res || res.therapistId !== therapist.id) {
       throw new NotFoundError('Booking not found');
     }
 
-    const patientDetail = (
-      res.patient as unknown as {
-        details?: Array<{ name?: string; dob?: Date; gender?: string; phone?: string }>;
-      }
-    )?.details?.[0];
-    const patientLocation = (
-      res.patient as unknown as {
-        locations?: Array<{
-          address?: string;
-          landmark?: string;
-          city?: string;
-          state?: string;
-          postalCode?: string;
-        }>;
-      }
-    )?.locations?.[0];
-
-    const dobDate = patientDetail?.dob ? new Date(patientDetail.dob) : null;
-    const dobStr = dobDate
-      ? dobDate.toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' })
-      : 'June 15, 1995';
-
-    const dateStr = new Date(res.date).toLocaleDateString('en-US', {
-      month: 'long',
-      day: '2-digit',
-      year: 'numeric',
-    });
-
-    const startHourNum = res.startHour || new Date(res.startTime).getHours();
-    const startAmPm = startHourNum >= 12 ? 'PM' : 'AM';
-    const formattedStartHour = startHourNum % 12 || 12;
-    const endHourNum = (startHourNum + 1) % 24;
-    const endAmPm = endHourNum >= 12 ? 'PM' : 'AM';
-    const formattedEndHour = endHourNum % 12 || 12;
-    const timeStr = `${String(formattedStartHour).padStart(2, '0')}:00 ${startAmPm} - ${String(formattedEndHour).padStart(2, '0')}:00 ${endAmPm}`;
-
     const treatmentSession = await prisma.treatmentSession.findFirst({
       where: { reservationId: res.id },
-      include: {
-        treatmentPlan: {
-          include: {
-            clinicalAssessments: {
-              orderBy: { createdAt: 'desc' },
-            },
-            docRecords: true,
-            sessions: {
-              include: {
-                improvementRecord: true,
-              },
-            },
-          },
-        },
-      },
+      ...TREATMENT_SESSION_WITH_PLAN_INCLUDE,
     });
 
-    let statusFormatted = res.status.toUpperCase();
-    if (treatmentSession?.status) {
-      statusFormatted = treatmentSession.status.toUpperCase();
-    } else if (statusFormatted === 'BOOKED') {
-      const isPast = new Date(res.startTime) < new Date();
-      statusFormatted = isPast ? 'COMPLETED' : 'UPCOMING';
+    let treatmentPlan = treatmentSession?.treatmentPlan;
+
+    if (!treatmentPlan && res.patientId) {
+      const foundPlan = await prisma.treatmentPlan.findFirst({
+        where: {
+          patientId: res.patientId,
+          therapistId: res.therapistId,
+        },
+        ...TREATMENT_PLAN_INCLUDE,
+        orderBy: { createdAt: 'desc' },
+      });
+
+      if (foundPlan) {
+        treatmentPlan = foundPlan;
+      }
     }
 
-    const improvementRecords = (treatmentSession?.treatmentPlan?.sessions || [])
-      .map((s) => (s.improvementRecord ? { ...s.improvementRecord, sessionDate: s.date } : null))
-      .filter(Boolean);
-
-    return {
-      id: res.id,
-      mode: therapist.mode || 'home_visit',
-      overallStatus: statusFormatted,
-      patient: {
-        id: res.patient?.patientId || 'PAT-101',
-        name: patientDetail?.name || 'Patient',
-        dob: dobStr,
-        gender: (patientDetail?.gender?.toUpperCase() as 'MALE' | 'FEMALE' | 'OTHER') || 'MALE',
-        phone: patientDetail?.phone || '+91 98765 43210',
-        image: undefined,
-      },
-      condition: {
-        title: treatmentSession?.condition || 'Physical Therapy Session',
-      },
-      problemDescription:
-        treatmentSession?.DescribedAs || 'Scheduled therapy session with patient.',
-      location: {
-        address: patientLocation?.address || therapist.displayAddress || '100 Green Avenue',
-        landmark: patientLocation?.landmark || 'Near City Park',
-        city: patientLocation?.city || 'New Delhi',
-        state: patientLocation?.state || 'Delhi',
-        postalCode: patientLocation?.postalCode || '110002',
-      },
-      sessions: [
-        {
-          id: res.id,
-          date: dateStr,
-          scheduledTime: timeStr,
-          status: statusFormatted.toLowerCase(),
-        },
-      ],
-      documents: treatmentSession?.treatmentPlan?.docRecords || [],
-      clinicalAssessments: treatmentSession?.treatmentPlan?.clinicalAssessments || [],
-      clinicalAssessment: treatmentSession?.treatmentPlan?.clinicalAssessments?.[0] || null,
-      improvementRecords,
-    };
+    return formatTherapistBookingDetail(res, therapist, treatmentSession, treatmentPlan);
   }
 
   async acceptBooking(userId: string, bookingId: string) {
@@ -289,12 +165,11 @@ class TherapistSessionService {
 
     if (!session) throw new NotFoundError('Session not found');
 
-    // Generate & store OTP in Redis with anti-abuse rate limits (60s cooldown, max 3 attempts/hr)
     const otpCode = await createAndStoreOTP(session.id, 'session_otp');
 
     return {
       message: 'OTP sent to patient successfully',
-      otpCode, // Returned for dev testing
+      otpCode,
       expiresInMinutes: 5,
     };
   }
@@ -315,7 +190,6 @@ class TherapistSessionService {
 
     if (!session) throw new NotFoundError('Session not found');
 
-    // Verifies OTP in Redis & deletes it upon success (throws ValidationError if invalid or expired)
     await verifyOTP(session.id, otp, 'session_otp');
 
     const now = new Date();

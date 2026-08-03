@@ -1,6 +1,7 @@
 import { NotFoundError } from '@/core/errors/ApiError';
 import { CreateCouponDTO, UpdateCouponDTO } from './adminCoupon.types';
 import prisma from '@/config/prisma';
+import { softDeleteWhereClause } from '@/core/utils/softdelete';
 import {
   buildCouponAssignmentsData,
   buildCouponTherapistConstraintsData,
@@ -10,7 +11,7 @@ import {
 class AdminCouponService {
   async getAllCoupons() {
     const coupons = await prisma.coupon.findMany({
-      where: { OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }] },
+      where: softDeleteWhereClause(),
       include: {
         assignments: {
           select: {
@@ -59,8 +60,8 @@ class AdminCouponService {
   }
 
   async updateCoupon(id: string, data: UpdateCouponDTO) {
-    const existingCoupon = await prisma.coupon.findUnique({
-      where: { id, OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }] },
+    const existingCoupon = await prisma.coupon.findFirst({
+      where: softDeleteWhereClause({ id }),
     });
     if (!existingCoupon) {
       throw new NotFoundError('Coupon not found');

@@ -6,6 +6,7 @@ import {
   ALL_SLOTS,
 } from '@/core/constants/slots';
 import prisma from '@/config/prisma';
+import { softDeleteWhereClause } from '@/core/utils/softdelete';
 import { ValidationError } from '@/core/errors/ApiError';
 import { getSlotStartDateTime } from '@/core/utils/time-zone';
 import { addDays, addMinutes } from 'date-fns';
@@ -54,12 +55,11 @@ export class SlotManager {
 
     // 2. Check DB for existing reservation (booked or blocked)
     const existingReservation = await prisma.slotReservation.findFirst({
-      where: {
+      where: softDeleteWhereClause({
         therapistId,
         date: dateOnly,
         startHour,
-        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
-      },
+      }),
     });
 
     if (existingReservation) {

@@ -1,13 +1,12 @@
 import prisma from '@/config/prisma';
+import { softDeleteWhereClause } from '@/core/utils/softdelete';
 import { NotFoundError } from '@/core/errors/ApiError';
 import { formatUserBlockResponseMessage, getToggledUserStatus } from './adminUser.helper';
 
 class AdminUserService {
   async getAllUsers() {
     const users = await prisma.user.findMany({
-      where: {
-        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
-      },
+      where: softDeleteWhereClause(),
       select: {
         id: true,
         name: true,

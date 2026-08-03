@@ -440,8 +440,6 @@ model TreatmentPlan {
   patientDetailId String @db.ObjectId
 
   status                 TreatmentPlanStatus
-  suggestedTreatmentDays Int?
-  recommendationRule     String? // e.g. "daily", "alternate_days", "3_times_week"
   beforeTherapyImg       String?
   afterTherapyImg        String?
   finalImprovement       String?
@@ -1166,6 +1164,7 @@ model ClinicalAssessment {
   problemsIdentified String[]
   treatmentPlanItems String[]
   visitFrequency     VisitFrequency
+  suggestedTreatmentDays Int?
   hepGiven           Boolean
   therapistNotes     String?
   documentUrls       String[]

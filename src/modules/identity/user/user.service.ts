@@ -1,4 +1,5 @@
 import prisma from '@/config/prisma';
+import { softDeleteWhereClause } from '@/core/utils/softdelete';
 import { NotFoundError } from '@/core/errors/ApiError';
 import bcrypt from 'bcrypt';
 import { UpdateUserDTO } from './user.type';
@@ -7,7 +8,7 @@ import { updateInfoData } from './user.helper';
 class UserService {
   getUserById = async (id: string) => {
     const user = await prisma.user.findFirst({
-      where: { id, OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }], status: 'active' },
+      where: softDeleteWhereClause({ id, status: 'active' }),
     });
 
     if (!user) {
@@ -19,11 +20,10 @@ class UserService {
 
   getInfo = async (userId: string) => {
     const user = await prisma.user.findFirst({
-      where: {
+      where: softDeleteWhereClause({
         id: userId,
-        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
         status: 'active',
-      },
+      }),
       include: {
         therapistProfile: {
           include: {

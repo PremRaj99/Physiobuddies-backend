@@ -1,4 +1,5 @@
 import prisma from '@/config/prisma';
+import { softDeleteWhereClause } from '@/core/utils/softdelete';
 import { ValidationError } from '@/core/errors/ApiError';
 import { therapistService } from '../therapist.service';
 import { ApplyLeaveDTO } from './therapistLeave.type';
@@ -25,15 +26,14 @@ class TherapistLeaveService {
 
     // Check if therapist has booked sessions during the leave period
     const bookedSessions = await prisma.slotReservation.findFirst({
-      where: {
+      where: softDeleteWhereClause({
         therapistId: therapist.id,
         status: 'booked',
         date: {
           gte: start,
           lte: end,
         },
-        OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }],
-      },
+      }),
     });
 
     if (bookedSessions) {
