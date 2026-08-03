@@ -212,23 +212,21 @@ export interface FormattablePatientBooking {
 
 export const formatPatientBookings = (reservations: FormattablePatientBooking[]) => {
   return reservations.map((res) => {
-    const dateStr = formatDateStr(res.date, 'short');
-    const startHourNum = res.startHour || new Date(res.startTime).getHours();
+    const { id, therapistId, date, startTime, startHour, status, treatmentSession, therapist } =
+      res;
+
+    const dateStr = formatDateStr(date, 'short');
+    const startHourNum = startHour ?? new Date(startTime).getHours();
     const timeStr = formatScheduledTime(startHourNum);
-    const statusFormatted = resolveBookingStatus(
-      res.status,
-      res.startTime,
-      res.treatmentSession?.status,
-    );
+    const statusFormatted = resolveBookingStatus(status, startTime, treatmentSession?.status);
 
     return {
-      id: res.id,
-      therapistId: res.therapistId,
-      therapistName: res.therapist?.user?.name || 'Therapist',
-      therapistImage: res.therapist?.user?.image || '',
-      therapistGender:
-        (res.therapist?.gender?.toUpperCase() as 'MALE' | 'FEMALE' | 'OTHER') || 'MALE',
-      treatmentMode: res.therapist?.mode || 'home_visit',
+      id,
+      therapistId,
+      therapistName: therapist?.user?.name || 'Therapist',
+      therapistImage: therapist?.user?.image || '',
+      therapistGender: (therapist?.gender?.toUpperCase() as 'MALE' | 'FEMALE' | 'OTHER') || 'MALE',
+      treatmentMode: therapist?.mode || 'home_visit',
       status: statusFormatted,
       lastSessionDate: dateStr,
       lastSessionTime: timeStr,

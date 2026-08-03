@@ -56,17 +56,9 @@ class PatientService {
   };
 
   getMyBookings = async (userId: string) => {
-    const patient = await prisma.patient.findFirst({
-      where: softDeleteWhereClause({ userId }),
-    });
-
-    if (!patient) {
-      return [];
-    }
-
     const reservations = await prisma.slotReservation.findMany({
       where: softDeleteWhereClause({
-        patientId: patient.id,
+        patient: softDeleteWhereClause({ userId }),
       }),
       select: {
         id: true,
