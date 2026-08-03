@@ -16,6 +16,7 @@ class TherapistSessionService {
   async getMyBookings(userId: string) {
     const therapist = await prisma.therapist.findUnique({
       where: { userId },
+      select: { id: true, mode: true },
     });
 
     if (!therapist) {
@@ -26,13 +27,35 @@ class TherapistSessionService {
       where: softDeleteWhereClause({
         therapistId: therapist.id,
       }),
-      include: {
-        patient: {
-          include: {
-            details: true,
+      select: {
+        id: true,
+        date: true,
+        startTime: true,
+        startHour: true,
+        status: true,
+        treatmentSession: {
+          select: {
+            status: true,
+            treatmentPlan: {
+              select: {
+                patientDetailId: true,
+                patient: {
+                  select: {
+                    patientId: true,
+                    details: {
+                      select: {
+                        id: true,
+                        name: true,
+                        dob: true,
+                        gender: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
           },
         },
-        treatmentSession: true,
       },
       orderBy: { startTime: 'desc' },
     });

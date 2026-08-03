@@ -20,12 +20,21 @@ export interface FormattableTherapistBooking {
   startTime: Date | string;
   startHour?: number | null;
   status: string;
-  patient?: {
-    patientId?: string | null;
-    details?: Array<{ name?: string; dob?: Date; gender?: string }>;
-  } | null;
   treatmentSession?: {
-    status?: string;
+    status?: string | null;
+    treatmentPlan?: {
+      patientDetailId?: string | null;
+      patient?: {
+        patientId?: string | null;
+        details?: {
+          id: string;
+          name: string;
+          dob: Date | string;
+          gender: string;
+          phone?: string;
+        }[];
+      } | null;
+    } | null;
   } | null;
 }
 
@@ -33,33 +42,61 @@ export const formatTherapistBookings = (
   reservations: FormattableTherapistBooking[],
   defaultMode: string,
 ) => {
-  return reservations.map((res) => {
-    const patientDetail = res.patient?.details?.[0];
-    const dob = patientDetail?.dob;
-    const age = dob ? new Date().getFullYear() - new Date(dob).getFullYear() : null;
+  const currentYear = new Date().getFullYear();
+  const formattedBookings = [];
+
+  for (let i = 0; i < reservations.length; i++) {
+    const res = reservations[i];
+    if (!res) {
+      continue;
+    }
+    const treatmentSession = res.treatmentSession;
+    const treatmentPlan = treatmentSession?.treatmentPlan;
+    const patient = treatmentPlan?.patient;
+    const patientDetailId = treatmentPlan?.patientDetailId;
+    const details = patient?.details;
+
+    if (!details || !patientDetailId) {
+      continue;
+    }
+
+    const patientDetail = details.find((detail) => detail.id === patientDetailId);
+    if (!patientDetail) {
+      continue;
+    }
+
+    const dob = patientDetail.dob;
+    const dobYear =
+      dob instanceof Date ? dob.getFullYear() : dob ? new Date(dob).getFullYear() : null;
+    const age = dobYear !== null && !isNaN(dobYear) ? currentYear - dobYear : null;
 
     const dateStr = formatDateStr(res.date);
-    const startHourNum = res.startHour || new Date(res.startTime).getHours();
+    const startHourNum =
+      res.startHour ||
+      (res.startTime instanceof Date
+        ? res.startTime.getHours()
+        : new Date(res.startTime).getHours());
     const timeStr = formatScheduledTime(startHourNum);
     const statusFormatted = resolveBookingStatus(
       res.status,
       res.startTime,
-      res.treatmentSession?.status,
+      treatmentSession?.status,
     );
 
-    return {
+    formattedBookings.push({
       id: res.id,
-      patientID: res.patient?.patientId || 'PAT-101',
-      patientName: patientDetail?.name || 'Patient',
-      patientGender:
-        (patientDetail?.gender?.toUpperCase() as 'MALE' | 'FEMALE' | 'OTHER') || 'MALE',
+      patientID: patient?.patientId ?? '',
+      patientName: patientDetail.name,
+      patientGender: patientDetail.gender.toUpperCase() as 'MALE' | 'FEMALE' | 'OTHER',
       patientAge: age,
-      treatmentMode: defaultMode || 'home_visit',
+      treatmentMode: defaultMode,
       status: statusFormatted,
       lastSessionDate: dateStr,
       lastSessionTime: timeStr,
-    };
-  });
+    });
+  }
+
+  return formattedBookings;
 };
 
 export interface FormattableTherapistBookingDetailReservation {

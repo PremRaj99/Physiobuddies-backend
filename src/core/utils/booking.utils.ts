@@ -1,10 +1,17 @@
-export const formatScheduledTime = (startHourNum: number): string => {
+export const formatScheduledTime = (startHourNum: number, durationMinutes: number = 40): string => {
   const startAmPm = startHourNum >= 12 ? 'PM' : 'AM';
   const formattedStartHour = startHourNum % 12 || 12;
-  const endHourNum = (startHourNum + 1) % 24;
-  const endAmPm = endHourNum >= 12 ? 'PM' : 'AM';
-  const formattedEndHour = endHourNum % 12 || 12;
-  return `${String(formattedStartHour).padStart(2, '0')}:00 ${startAmPm} - ${String(formattedEndHour).padStart(2, '0')}:00 ${endAmPm}`;
+
+  const totalEndMinutes = startHourNum * 60 + durationMinutes;
+  const endHour24 = Math.floor(totalEndMinutes / 60) % 24;
+  const endMinutes = totalEndMinutes % 60;
+  const endAmPm = endHour24 >= 12 ? 'PM' : 'AM';
+  const formattedEndHour = endHour24 % 12 || 12;
+
+  const startStr = `${String(formattedStartHour).padStart(2, '0')}:00 ${startAmPm}`;
+  const endStr = `${String(formattedEndHour).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')} ${endAmPm}`;
+
+  return `${startStr} - ${endStr}`;
 };
 
 export const formatDateStr = (

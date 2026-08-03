@@ -194,10 +194,13 @@ export interface FormattablePatientBooking {
   id: string;
   date: Date | string;
   startTime: Date | string;
-  startHour?: number | null;
+  startHour: number;
   status: string;
   therapistId: string;
-  therapist?: {
+  treatmentSession?: {
+    status: string;
+  } | null;
+  therapist: {
     gender?: string | null;
     mode?: string | null;
     user?: {
@@ -212,7 +215,11 @@ export const formatPatientBookings = (reservations: FormattablePatientBooking[])
     const dateStr = formatDateStr(res.date, 'short');
     const startHourNum = res.startHour || new Date(res.startTime).getHours();
     const timeStr = formatScheduledTime(startHourNum);
-    const statusFormatted = resolveBookingStatus(res.status, res.startTime);
+    const statusFormatted = resolveBookingStatus(
+      res.status,
+      res.startTime,
+      res.treatmentSession?.status,
+    );
 
     return {
       id: res.id,

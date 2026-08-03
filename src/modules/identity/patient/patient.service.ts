@@ -68,10 +68,25 @@ class PatientService {
       where: softDeleteWhereClause({
         patientId: patient.id,
       }),
-      include: {
+      select: {
+        id: true,
+        date: true,
+        startTime: true,
+        startHour: true,
+        status: true,
+        therapistId: true,
+        treatmentSession: {
+          select: {
+            status: true,
+          },
+        },
         therapist: {
-          include: {
-            user: { select: { name: true, image: true } },
+          select: {
+            mode: true,
+            gender: true,
+            user: {
+              select: { name: true, image: true },
+            },
           },
         },
       },
