@@ -1,16 +1,8 @@
 import prisma from '@/config/prisma';
 import { NotFoundError } from '@/core/errors/ApiError';
 import { createAndStoreOTP, verifyOTP } from '@/modules/identity/auth/otp-management';
-import {
-  TREATMENT_PLAN_INCLUDE,
-  TREATMENT_SESSION_WITH_PLAN_INCLUDE,
-} from '@/core/utils/booking.utils';
 import { softDeleteWhereClause } from '@/core/utils/softdelete';
-import {
-  THERAPIST_BOOKING_RESERVATION_INCLUDE,
-  formatTherapistBookings,
-  formatTherapistBookingDetail,
-} from './therapistSession.helper';
+import { formatTherapistBookings, formatTherapistBookingDetail } from './therapistSession.helper';
 
 class TherapistSessionService {
   async getMyBookings(userId: string) {
@@ -43,6 +35,7 @@ class TherapistSessionService {
                   select: {
                     patientId: true,
                     details: {
+                      where: softDeleteWhereClause(),
                       select: {
                         id: true,
                         name: true,
@@ -105,46 +98,90 @@ class TherapistSessionService {
   }
 
   async getBookingById(userId: string, bookingId: string) {
-    const therapist = await prisma.therapist.findUnique({
-      where: { userId },
+    const res = await prisma.slotReservation.findFirst({
+      where: softDeleteWhereClause({
+        id: bookingId,
+        therapist: softDeleteWhereClause({ userId }),
+      }),
+      select: {
+        therapistId: true,
+        therapist: {
+          select: {
+            mode: true,
+          },
+        },
+        treatmentSession: {
+          select: {
+            condition: true,
+            DescribedAs: true,
+            treatmentPlan: {
+              select: {
+                id: true,
+                patientDetailId: true,
+                locationId: true,
+                status: true,
+                patient: {
+                  select: {
+                    patientId: true,
+                    details: {
+                      where: softDeleteWhereClause(),
+                      select: {
+                        id: true,
+                        name: true,
+                        dob: true,
+                        gender: true,
+                      },
+                    },
+                    locations: {
+                      where: softDeleteWhereClause(),
+                      select: {
+                        id: true,
+                        landmark: true,
+                        address: true,
+                        city: true,
+                        state: true,
+                        country: true,
+                        postalCode: true,
+                        location: true,
+                      },
+                    },
+                  },
+                },
+                sessions: {
+                  select: {
+                    id: true,
+                    date: true,
+                    actualStartTime: true,
+                    actualEndTime: true,
+                    status: true,
+                    reservation: {
+                      select: {
+                        startHour: true,
+                        endTime: true,
+                        startTime: true,
+                        date: true,
+                      },
+                    },
+                    improvementRecord: true,
+                  },
+                  orderBy: {
+                    date: 'asc',
+                  },
+                },
+                clinicalAssessments: true,
+                docRecords: true,
+              },
+            },
+          },
+        },
+      },
     });
 
-    if (!therapist) {
-      throw new NotFoundError('Therapist not found');
-    }
-
-    const res = await prisma.slotReservation.findUnique({
-      where: { id: bookingId },
-      include: THERAPIST_BOOKING_RESERVATION_INCLUDE,
-    });
-
-    if (!res || res.therapistId !== therapist.id) {
+    if (!res) {
       throw new NotFoundError('Booking not found');
     }
 
-    const treatmentSession = await prisma.treatmentSession.findFirst({
-      where: { reservationId: res.id },
-      ...TREATMENT_SESSION_WITH_PLAN_INCLUDE,
-    });
-
-    let treatmentPlan = treatmentSession?.treatmentPlan;
-
-    if (!treatmentPlan && res.patientId) {
-      const foundPlan = await prisma.treatmentPlan.findFirst({
-        where: {
-          patientId: res.patientId,
-          therapistId: res.therapistId,
-        },
-        ...TREATMENT_PLAN_INCLUDE,
-        orderBy: { createdAt: 'desc' },
-      });
-
-      if (foundPlan) {
-        treatmentPlan = foundPlan;
-      }
-    }
-
-    return formatTherapistBookingDetail(res, therapist, treatmentSession, treatmentPlan);
+    return formatTherapistBookingDetail(res);
   }
 
   async acceptBooking(userId: string, bookingId: string) {

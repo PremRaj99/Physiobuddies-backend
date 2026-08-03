@@ -1,3 +1,4 @@
+import { NotFoundError } from '@/core/errors/ApiError';
 import {
   formatScheduledTime,
   formatDateStr,
@@ -99,118 +100,148 @@ export const formatTherapistBookings = (
   return formattedBookings;
 };
 
-export interface FormattableTherapistBookingDetailReservation {
-  id: string;
-  date: Date | string;
-  startTime: Date | string;
+export interface FormattableDetailSessionReservation {
   startHour?: number | null;
-  status: string;
-  patient?: {
-    patientId?: string | null;
-    details?: Array<{
-      name?: string | null;
-      dob?: Date | null;
-      gender?: string | null;
-      phone?: string | null;
-    }>;
-    locations?: Array<{
-      address?: string | null;
-      landmark?: string | null;
-      city?: string | null;
-      state?: string | null;
-      postalCode?: string | null;
-    }>;
-  } | null;
+  startTime?: Date | string | null;
+  endTime?: Date | string | null;
+  date?: Date | string | null;
 }
 
-export interface FormattableTherapist {
-  mode?: string | null;
-  displayAddress?: string | null;
+export interface FormattableDetailSession {
+  id: string;
+  date: Date | string;
+  status: string;
+  actualStartTime?: Date | string | null;
+  actualEndTime?: Date | string | null;
+  reservation?: FormattableDetailSessionReservation | null;
+  improvementRecord?: unknown;
+}
+
+export interface FormattableDetailPatientDetail {
+  id: string;
+  name: string;
+  dob: Date | string;
+  gender: string;
+}
+
+export interface FormattableDetailPatientLocation {
+  id: string;
+  address: string;
+  landmark?: string | null;
+  city: string;
+  state: string;
+  country?: string | null;
+  postalCode: string;
+  location?: unknown;
+}
+
+export interface FormattableDetailPatient {
+  patientId: string;
+  details?: FormattableDetailPatientDetail[];
+  locations?: FormattableDetailPatientLocation[];
+}
+
+export interface FormattableDetailTreatmentPlan {
+  id: string;
+  status: string;
+  patientDetailId?: string | null;
+  locationId?: string | null;
+  patient?: FormattableDetailPatient | null;
+  sessions?: FormattableDetailSession[];
+  clinicalAssessments?: unknown[];
+  docRecords?: unknown[];
 }
 
 export interface FormattableTherapistTreatmentSession {
-  id?: string;
-  status?: string | null;
   condition?: string | null;
   DescribedAs?: string | null;
-  actualStartTime?: Date | null;
-  actualEndTime?: Date | null;
+  treatmentPlan?: FormattableDetailTreatmentPlan | null;
 }
 
-export interface FormattableTherapistTreatmentPlan {
-  sessions?: Array<{
-    id: string;
-    date: Date;
-    status: string;
-    actualStartTime?: Date | null;
-    actualEndTime?: Date | null;
-    reservation?: { startHour?: number | null; startTime?: Date | null };
-    improvementData?: unknown;
-  }>;
-  docRecords?: unknown[];
-  clinicalAssessments?: unknown[];
+export interface FormattableTherapistBookingDetailReservation {
+  therapistId: string;
+  therapist: {
+    mode: string;
+  };
+  treatmentSession?: FormattableTherapistTreatmentSession | null;
 }
 
-export const formatTherapistBookingDetail = (
-  res: FormattableTherapistBookingDetailReservation,
-  therapist: FormattableTherapist,
-  treatmentSession: FormattableTherapistTreatmentSession | null | undefined,
-  treatmentPlan: FormattableTherapistTreatmentPlan | null | undefined,
-) => {
-  const patientDetail = res.patient?.details?.[0];
-  const patientLocation = res.patient?.locations?.[0];
+export const formatTherapistBookingDetail = (res: FormattableTherapistBookingDetailReservation) => {
+  const treatmentPlan = res.treatmentSession?.treatmentPlan;
+  const treatmentSessions = treatmentPlan?.sessions;
+  if (!treatmentSessions || treatmentSessions.length === 0) {
+    throw new NotFoundError('Treatment Sessions not found');
+  }
 
-  const dobStr = patientDetail?.dob ? formatDateStr(patientDetail.dob) : 'June 15, 1995';
-  const statusFormatted = resolveBookingStatus(res.status, res.startTime, treatmentSession?.status);
+  const patient = treatmentPlan?.patient;
+  const details = patient?.details;
+  const locations = patient?.locations;
 
-  const sessions = treatmentPlan?.sessions?.map((session) => {
+  const patientDetail = details?.find((d) => d.id === treatmentPlan?.patientDetailId);
+  if (!patientDetail) {
+    throw new NotFoundError('Patient Detail not found');
+  }
+
+  const patientLocation = locations?.find((l) => l.id === treatmentPlan?.locationId);
+  if (!patientLocation) {
+    throw new NotFoundError('Patient Location not found');
+  }
+
+  const latestSession = treatmentSessions[treatmentSessions.length - 1];
+  if (!latestSession) {
+    throw new NotFoundError('Latest Session not found');
+  }
+
+  const dobStr = patientDetail.dob ? formatDateStr(patientDetail.dob) : '';
+  const statusFormatted = resolveBookingStatus(
+    treatmentPlan?.status || 'BOOKED',
+    latestSession.reservation?.startTime || latestSession.date || new Date(),
+  );
+
+  const sessions = treatmentSessions.map((session) => {
     const reservationStartHour =
-      session.reservation?.startHour ||
-      new Date(session.reservation?.startTime || session.date).getHours();
+      session.reservation?.startHour ??
+      (session.reservation?.startTime
+        ? new Date(session.reservation.startTime).getHours()
+        : new Date(session.date).getHours());
 
     return {
       id: session.id,
-      date: session.date.toISOString(),
+      date: new Date(session.date).toISOString(),
       scheduledTime: formatScheduledTime(reservationStartHour),
-      actualStartTime: session.actualStartTime?.toISOString(),
-      actualEndTime: session.actualEndTime?.toISOString(),
+      actualStartTime: session.actualStartTime
+        ? new Date(session.actualStartTime).toISOString()
+        : undefined,
+      actualEndTime: session.actualEndTime
+        ? new Date(session.actualEndTime).toISOString()
+        : undefined,
       status: resolveBookingStatus(session.status, session.reservation?.startTime || session.date),
     };
-  }) || [
-    {
-      id: treatmentSession?.id || res.id,
-      date: new Date(res.date).toISOString(),
-      scheduledTime: formatScheduledTime(res.startHour || new Date(res.startTime).getHours()),
-      actualStartTime: treatmentSession?.actualStartTime?.toISOString(),
-      actualEndTime: treatmentSession?.actualEndTime?.toISOString(),
-      status: statusFormatted,
-    },
-  ];
+  });
 
-  const improvementRecords = buildImprovementRecords(treatmentPlan?.sessions);
+  const improvementRecords = buildImprovementRecords(treatmentSessions);
 
   return {
-    id: res.id,
-    mode: therapist.mode || 'home_visit',
+    id: treatmentPlan?.id || '',
+    mode: res.therapist.mode,
     overallStatus: statusFormatted,
     patient: {
-      id: res.patient?.patientId || 'PAT-101',
-      name: patientDetail?.name || 'Patient',
+      id: patient?.patientId || '',
+      name: patientDetail.name,
       dob: dobStr,
-      gender: (patientDetail?.gender?.toUpperCase() as 'MALE' | 'FEMALE' | 'OTHER') || 'MALE',
-      phone: patientDetail?.phone || '+91 98765 43210',
-      image: undefined,
+      gender: (patientDetail.gender.toUpperCase() as 'MALE' | 'FEMALE' | 'OTHER') || 'MALE',
     },
     condition: {
-      title: treatmentSession?.condition || 'Physical Therapy Session',
+      title: res.treatmentSession?.condition || 'Physical Therapy Session',
     },
-    problemDescription: treatmentSession?.DescribedAs || 'Scheduled therapy session with patient.',
+    problemDescription:
+      res.treatmentSession?.DescribedAs || 'Scheduled therapy session with patient.',
     location: {
-      address: patientLocation?.address || therapist.displayAddress || '100 Green Avenue',
-      landmark: patientLocation?.landmark || 'Near City Park',
-      city: patientLocation?.city || 'New Delhi',
-      state: patientLocation?.state || 'Delhi',
-      postalCode: patientLocation?.postalCode || '110002',
+      address: patientLocation.address || '',
+      landmark: patientLocation.landmark || '',
+      city: patientLocation.city || '',
+      state: patientLocation.state || '',
+      postalCode: patientLocation.postalCode || '',
     },
     sessions,
     documents: treatmentPlan?.docRecords || [],
