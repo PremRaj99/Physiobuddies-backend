@@ -190,21 +190,13 @@ export const formatPatientInfo = (patient: FormattablePatientInfo) => {
   };
 };
 
-export interface FormattablePatientBooking {
+export interface FormattablePatientTreatmentPlan {
   id: string;
-  date: Date | string;
-  startTime: Date | string;
-  startHour: number;
   status: string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
   therapistId: string;
-  treatmentPlan?: {
-    status: string;
-    sessions: {
-      date: Date | string;
-      status: string;
-    }[];
-  } | null;
-  therapist: {
+  therapist?: {
     gender?: string | null;
     mode?: string | null;
     user?: {
@@ -212,20 +204,35 @@ export interface FormattablePatientBooking {
       image?: string | null;
     } | null;
   } | null;
+  sessions?: {
+    id: string;
+    date: Date | string;
+    status: string;
+    mode?: string | null;
+    reservation?: {
+      id?: string;
+      date?: Date | string;
+      startTime?: Date | string;
+      startHour?: number | null;
+      status?: string;
+    } | null;
+  }[];
 }
 
-export const formatPatientBookings = (reservations: FormattablePatientBooking[]) => {
-  return reservations.map((res) => {
-    const { id, therapistId, date, startTime, startHour, status, treatmentPlan, therapist } = res;
+export const formatPatientBookings = (plans: FormattablePatientTreatmentPlan[]) => {
+  return plans.map((plan) => {
+    const { id, status, therapistId, therapist, sessions, updatedAt, createdAt } = plan;
 
-    const treatmentPlanStatus = treatmentPlan?.sessions?.find(
-      (session) => session.status === 'confirmed',
-    )?.status;
+    const latestSession = sessions && sessions.length > 0 ? sessions[0] : null;
+
+    const date =
+      latestSession?.reservation?.startTime || latestSession?.date || updatedAt || createdAt;
+    const startHour =
+      latestSession?.reservation?.startHour ?? (date ? new Date(date).getHours() : 9);
 
     const dateStr = formatDateStr(date, 'short');
-    const startHourNum = startHour ?? new Date(startTime).getHours();
-    const timeStr = formatScheduledTime(startHourNum);
-    const statusFormatted = resolveBookingStatus(status, startTime, treatmentPlanStatus);
+    const timeStr = formatScheduledTime(startHour);
+    const statusFormatted = resolveBookingStatus(status, date, latestSession?.status);
 
     return {
       id,
@@ -233,7 +240,7 @@ export const formatPatientBookings = (reservations: FormattablePatientBooking[])
       therapistName: therapist?.user?.name || 'Therapist',
       therapistImage: therapist?.user?.image || '',
       therapistGender: (therapist?.gender?.toUpperCase() as 'MALE' | 'FEMALE' | 'OTHER') || 'MALE',
-      treatmentMode: therapist?.mode || 'home_visit',
+      treatmentMode: latestSession?.mode || therapist?.mode || 'home_visit',
       status: statusFormatted,
       lastSessionDate: dateStr,
       lastSessionTime: timeStr,
@@ -241,14 +248,12 @@ export const formatPatientBookings = (reservations: FormattablePatientBooking[])
   });
 };
 
-export interface FormattableBookingReservation {
+export interface FormattablePatientPlanDetail {
   id: string;
   status: string;
-  startTime: Date;
-  startHour?: number | null;
-  date: Date;
-  patientId?: string | null;
-  therapistId?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  patientId: string;
   patient?: {
     id?: string;
     details?: Array<{
@@ -276,113 +281,110 @@ export interface FormattableBookingReservation {
     rating?: number | null;
     user?: { name?: string | null; image?: string | null } | null;
   } | null;
-}
-
-export interface FormattableTreatmentSession {
-  id?: string;
-  mode?: string | null;
-  status?: string | null;
-  condition?: string | null;
-  DescribedAs?: string | null;
-  actualStartTime?: Date | null;
-  actualEndTime?: Date | null;
-  treatmentPlan?: {
-    id?: string;
-    sessions?: Array<{
-      id: string;
-      date: Date;
-      status: string;
-      actualStartTime?: Date | null;
-      actualEndTime?: Date | null;
-      reservation?: { startHour?: number | null; startTime?: Date | null };
-      improvementData?: unknown;
-    }>;
-    docRecords?: Array<{
-      id: string;
-      name: string;
-      fileType: string;
-      url: string;
-      createdAt: Date;
-    }>;
-    clinicalAssessments?: unknown[];
-  } | null;
-}
-
-export interface FormattableFallbackPatient {
-  id: string;
+  sessions?: Array<{
+    id: string;
+    date: Date;
+    status: string;
+    mode?: string | null;
+    condition?: string | null;
+    DescribedAs?: string | null;
+    actualStartTime?: Date | null;
+    actualEndTime?: Date | null;
+    reservation?: { startHour?: number | null; startTime?: Date | null } | null;
+    improvementRecord?: unknown;
+  }>;
+  docRecords?: Array<{
+    id: string;
+    name: string;
+    fileType: string;
+    url: string;
+    createdAt: Date;
+  }>;
+  clinicalAssessments?: unknown[];
 }
 
 export const formatPatientBookingDetail = (
-  reservation: FormattableBookingReservation,
-  treatmentSession: FormattableTreatmentSession | null | undefined,
-  fallbackPatient: FormattableFallbackPatient,
+  plan: FormattablePatientPlanDetail,
+  fallbackPatient?: { id: string },
 ) => {
-  const patientDetail = reservation.patient?.details?.[0];
-  const patientLocation = reservation.patient?.locations?.[0];
-  const treatmentPlan = treatmentSession?.treatmentPlan;
+  const patientDetail = plan.patient?.details?.[0];
+  const patientLocation = plan.patient?.locations?.[0];
 
-  const overallStatus = resolveBookingStatus(
-    reservation.status,
-    reservation.startTime,
-    treatmentSession?.status,
-  );
+  const latestSession = plan.sessions && plan.sessions.length > 0 ? plan.sessions[0] : null;
 
-  const sessions = treatmentPlan?.sessions?.map((session) => {
-    const reservationStartHour =
-      session.reservation?.startHour ||
-      new Date(session.reservation?.startTime || session.date).getHours();
+  const date =
+    latestSession?.reservation?.startTime ||
+    latestSession?.date ||
+    plan.updatedAt ||
+    plan.createdAt;
 
-    return {
-      id: session.id,
-      date: session.date.toISOString(),
-      scheduledTime: formatScheduledTime(reservationStartHour),
-      actualStartTime: session.actualStartTime?.toISOString(),
-      actualEndTime: session.actualEndTime?.toISOString(),
-      status: resolveBookingStatus(session.status, session.reservation?.startTime || session.date),
-    };
-  }) || [
-    {
-      id: treatmentSession?.id || reservation.id,
-      date: reservation.date.toISOString(),
-      scheduledTime: formatScheduledTime(
-        reservation.startHour || new Date(reservation.startTime).getHours(),
-      ),
-      actualStartTime: treatmentSession?.actualStartTime?.toISOString(),
-      actualEndTime: treatmentSession?.actualEndTime?.toISOString(),
-      status: overallStatus,
-    },
-  ];
+  const overallStatus = resolveBookingStatus(plan.status, date, latestSession?.status);
 
-  const improvementRecords = buildImprovementRecords(treatmentPlan?.sessions);
+  const sessions =
+    plan.sessions?.map((session) => {
+      const reservationStartHour =
+        session.reservation?.startHour ||
+        (session.reservation?.startTime
+          ? new Date(session.reservation.startTime).getHours()
+          : new Date(session.date).getHours());
+
+      return {
+        id: session.id,
+        date:
+          session.date instanceof Date
+            ? session.date.toISOString()
+            : new Date(session.date).toISOString(),
+        scheduledTime: formatScheduledTime(reservationStartHour),
+        actualStartTime: session.actualStartTime
+          ? session.actualStartTime instanceof Date
+            ? session.actualStartTime.toISOString()
+            : new Date(session.actualStartTime).toISOString()
+          : null,
+        actualEndTime: session.actualEndTime
+          ? session.actualEndTime instanceof Date
+            ? session.actualEndTime.toISOString()
+            : new Date(session.actualEndTime).toISOString()
+          : null,
+        status: resolveBookingStatus(
+          session.status,
+          session.reservation?.startTime || session.date,
+        ),
+      };
+    }) || [];
+
+  const improvementRecords = buildImprovementRecords(plan.sessions);
 
   return {
-    id: reservation.id,
-    treatmentPlanId: treatmentPlan?.id,
-    mode: reservation.therapist?.mode || treatmentSession?.mode || 'home_visit',
+    id: plan.id,
+    treatmentPlanId: plan.id,
+    mode: latestSession?.mode || plan.therapist?.mode || 'home_visit',
     overallStatus,
     status: overallStatus,
     therapist: {
-      id: reservation.therapist?.id || '',
-      therapistId: reservation.therapist?.therapistId || reservation.therapist?.id || '',
-      name: reservation.therapist?.user?.name || 'Therapist',
-      image: reservation.therapist?.user?.image || '',
-      gender:
-        (reservation.therapist?.gender?.toUpperCase() as 'MALE' | 'FEMALE' | 'OTHER') || 'MALE',
-      rating: reservation.therapist?.rating || 4.8,
+      id: plan.therapist?.id || '',
+      therapistId: plan.therapist?.therapistId || plan.therapist?.id || '',
+      name: plan.therapist?.user?.name || 'Therapist',
+      image: plan.therapist?.user?.image || '',
+      gender: (plan.therapist?.gender?.toUpperCase() as 'MALE' | 'FEMALE' | 'OTHER') || 'MALE',
+      rating: plan.therapist?.rating || 4.8,
     },
     patient: {
-      id: reservation.patient?.id || fallbackPatient.id,
+      id: plan.patient?.id || fallbackPatient?.id || plan.patientId,
       name: patientDetail?.name || 'Patient',
-      dob: patientDetail?.dob?.toISOString(),
+      dob: patientDetail?.dob
+        ? patientDetail.dob instanceof Date
+          ? patientDetail.dob.toISOString()
+          : new Date(patientDetail.dob).toISOString()
+        : null,
       gender: (patientDetail?.gender?.toUpperCase() as 'MALE' | 'FEMALE' | 'OTHER') || 'MALE',
       phone: patientDetail?.phone || '',
     },
     condition: {
-      title: treatmentSession?.condition || 'Physical Therapy Session',
+      title: latestSession?.condition || 'Physical Therapy Session',
     },
-    problemDescription: treatmentSession?.DescribedAs || '',
+    problemDescription: latestSession?.DescribedAs || '',
     location: {
-      address: patientLocation?.address || reservation.therapist?.displayAddress || '',
+      address: patientLocation?.address || plan.therapist?.displayAddress || '',
       landmark: patientLocation?.landmark || null,
       city: patientLocation?.city || '',
       state: patientLocation?.state || '',
@@ -393,14 +395,17 @@ export const formatPatientBookingDetail = (
     },
     sessions,
     documents:
-      treatmentPlan?.docRecords?.map((document) => ({
+      plan.docRecords?.map((document) => ({
         id: document.id,
         name: document.name,
         fileType: document.fileType,
         url: document.url,
-        createdAt: document.createdAt.toISOString(),
+        createdAt:
+          document.createdAt instanceof Date
+            ? document.createdAt.toISOString()
+            : new Date(document.createdAt).toISOString(),
       })) || [],
-    clinicalAssessments: treatmentPlan?.clinicalAssessments || [],
+    clinicalAssessments: plan.clinicalAssessments || [],
     improvementRecords,
   };
 };
