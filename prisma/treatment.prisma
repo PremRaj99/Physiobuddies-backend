@@ -1,0 +1,207 @@
+enum TreatmentPlanStatus {
+  created
+  treatment_planned
+  ongoing
+  completed
+  cancelled
+  abandoned
+}
+
+enum SessionStatus {
+  pending // slot locked, payment pending
+  confirmed // payment success
+  active // OTP verified (therapist arrived)
+  completed // therapist finished session
+  settled // commission released
+  cancelled // cancelled before start
+  patient_no_show // patient absent/uncooperative
+  therapist_no_show // therapist failed to arrive/verify OTP within 15 mins
+  no_show // fallback/legacy no show
+  expired // payment not completed
+}
+
+enum ReviewedBy {
+  patient
+  therapist
+}
+
+enum StatusChangeActor {
+  system
+  therapist
+  patient
+  admin
+}
+
+// ----------------------------------------------------------------------
+// TREATMENT PLANS & SESSIONS
+// ----------------------------------------------------------------------
+
+model TreatmentPlan {
+  id              String @id @default(auto()) @map("_id") @db.ObjectId
+  patientId       String @db.ObjectId
+  therapistId     String @db.ObjectId
+  locationId      String @db.ObjectId
+  patientDetailId String @db.ObjectId
+
+  status           TreatmentPlanStatus
+  beforeTherapyImg String?
+  afterTherapyImg  String?
+  finalImprovement String?
+
+  patientDetailsSnapshot Json?
+  locationSnapshot       Json?
+  therapistSnapshot      Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  patient             Patient                  @relation("PatientTreatmentPlans", fields: [patientId], references: [id])
+  therapist           Therapist                @relation("TherapistTreatmentPlans", fields: [therapistId], references: [id])
+  sessions            TreatmentSession[]
+  clinicalAssessments ClinicalAssessment[]
+  statusLogs          TreatmentPlanStatusLog[]
+  docRecords          TreatmentPlanDocRecord[]
+  slotReservations    SlotReservation[]
+
+  @@index([patientId])
+  @@index([therapistId])
+}
+
+model TreatmentSession {
+  id              String @id @default(auto()) @map("_id") @db.ObjectId
+  treatmentPlanId String @db.ObjectId
+  reservationId   String @unique @db.ObjectId
+
+  date        DateTime
+  status      SessionStatus
+  mode        TreatmentMode
+  condition   String
+  DescribedAs String?
+
+  // Fraud Prevention, OTP & Lifecycle
+  startAt           DateTime?
+  endAt             DateTime?
+  actualStartTime   DateTime?
+  actualEndTime     DateTime?
+  otpCode           String?
+  otpVerified       Boolean   @default(false)
+  otpExpiresAt      DateTime?
+  ratingByPatient   Int?
+  ratingByTherapist Int?
+
+  cancelledBy        ReviewedBy?
+  cancelledAt        DateTime?
+  cancellationReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // add redundant fields for easier querying and reporting
+  therapistSnapshot     Json
+  patientDetailSnapshot Json
+  priceAtBooking        Float
+  addressSnapshot       Json?
+
+  // Relations
+  treatmentPlan     TreatmentPlan                      @relation(fields: [treatmentPlanId], references: [id])
+  reservation       SlotReservation                    @relation(fields: [reservationId], references: [id])
+  bill              TreatmentSessionBill?
+  review            TreatmentSessionReview?
+  couponUsage       CouponUsage?
+  statusLogs        TreatmentSessionStatusLog[]
+  improvementRecord TreatmentSessionImprovementRecord?
+  rescheduleLogs    SessionRescheduleLog[]
+
+  // Linked Reservation (Which slot was used)
+  treatmentSessionReviewId String? @db.ObjectId
+
+  @@index([treatmentPlanId])
+}
+
+model TreatmentPlanStatusLog {
+  id              String               @id @default(auto()) @map("_id") @db.ObjectId
+  treatmentPlanId String               @db.ObjectId
+  fromStatus      TreatmentPlanStatus?
+  toStatus        TreatmentPlanStatus
+  changedBy       StatusChangeActor
+  changedByUserId String?              @db.ObjectId
+  reason          String?
+  createdAt       DateTime             @default(now())
+
+  treatmentPlan TreatmentPlan @relation(fields: [treatmentPlanId], references: [id])
+
+  @@index([treatmentPlanId])
+}
+
+model TreatmentSessionStatusLog {
+  id              String            @id @default(auto()) @map("_id") @db.ObjectId
+  sessionId       String            @db.ObjectId
+  fromStatus      SessionStatus?
+  toStatus        SessionStatus
+  changedBy       StatusChangeActor
+  changedByUserId String?           @db.ObjectId
+  reason          String?
+  createdAt       DateTime          @default(now())
+
+  session TreatmentSession @relation(fields: [sessionId], references: [id])
+
+  @@index([sessionId])
+}
+
+model SessionRescheduleLog {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+  sessionId String @db.ObjectId
+
+  oldDate      DateTime
+  oldStartHour Int
+  newDate      DateTime
+  newStartHour Int
+
+  oldReservationId String @db.ObjectId
+  newReservationId String @db.ObjectId
+
+  changedBy       StatusChangeActor
+  changedByUserId String?           @db.ObjectId
+  reason          String?
+
+  createdAt DateTime @default(now())
+
+  session TreatmentSession @relation(fields: [sessionId], references: [id])
+
+  @@index([sessionId])
+}
+
+model TreatmentSessionImprovementRecord {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+  sessionId String @unique @db.ObjectId
+
+  painScoreBefore  Int?
+  painScoreAfter   Int
+  improvementNotes String
+  exercisesGiven   String[]
+
+  createdAt DateTime @default(now())
+
+  session TreatmentSession @relation(fields: [sessionId], references: [id])
+}
+
+model TreatmentPlanDocRecord {
+  id              String  @id @default(auto()) @map("_id") @db.ObjectId
+  treatmentPlanId String  @db.ObjectId
+  sessionId       String? @db.ObjectId
+
+  url      String
+  name     String
+  fileType String
+
+  uploadedBy       StatusChangeActor
+  uploadedByUserId String?           @db.ObjectId
+
+  createdAt DateTime @default(now())
+
+  treatmentPlan TreatmentPlan @relation(fields: [treatmentPlanId], references: [id])
+
+  @@index([treatmentPlanId])
+  @@index([sessionId])
+}

@@ -1,0 +1,62 @@
+enum ReservationStatus {
+  booked
+  blocked
+}
+
+// ----------------------------------------------------------------------
+// SCHEDULING & SLOTS
+// ----------------------------------------------------------------------
+
+model TherapistSlot {
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  therapistId String @unique @db.ObjectId
+
+  // e.g. { "sunday": ["morning"], "monday": ["morning", "evening"], ... }
+  schedule Json
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  therapist Therapist @relation(fields: [therapistId], references: [id])
+}
+
+model TherapistLeave {
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  therapistId String @db.ObjectId
+
+  startDate DateTime
+  endDate   DateTime
+  reason    String?
+
+  createdAt DateTime @default(now())
+
+  therapist Therapist @relation(fields: [therapistId], references: [id])
+
+  @@index([therapistId])
+}
+
+model SlotReservation {
+  id              String  @id @default(auto()) @map("_id") @db.ObjectId
+  therapistId     String  @db.ObjectId
+  patientId       String? @db.ObjectId
+  treatmentPlanId String? @db.ObjectId
+
+  startHour Int // 6-21 (hour of day the slot starts)
+
+  startTime DateTime
+  endTime   DateTime
+
+  date      DateTime
+  status    ReservationStatus
+  expiresAt DateTime? // For "hold" status — null for booked/blocked
+  deletedAt DateTime?
+
+  // Relations
+  therapist        Therapist         @relation(fields: [therapistId], references: [id])
+  patient          Patient?          @relation(fields: [patientId], references: [id])
+  treatmentPlan    TreatmentPlan?    @relation(fields: [treatmentPlanId], references: [id])
+  treatmentSession TreatmentSession?
+
+  @@unique([therapistId, date, startHour])
+  @@index([patientId])
+}

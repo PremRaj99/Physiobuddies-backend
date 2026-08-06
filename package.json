@@ -9,7 +9,7 @@
     "build": "tsc && tsc-alias",
     "format": "prettier --write .",
     "prisma:format": "prisma format",
-    "seed": "tsx prisma/seed.ts",
+    "seed": "tsx seed/seed.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "prepare": "husky",

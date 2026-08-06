@@ -1,0 +1,203 @@
+enum PaymentStatus {
+  created
+  pending
+  authorized
+  captured
+  completed
+  failed
+  expired
+  refunded
+}
+
+enum PaymentPurpose {
+  therapy_session
+  subscription
+}
+
+enum BillStatus {
+  unclaimed
+  released
+  refunded
+}
+
+enum WalletType {
+  earning
+  payout
+  penalty
+  adjust
+  hold
+}
+
+enum PayoutStatus {
+  pending
+  processing
+  paid
+  failed
+  requested
+  rejected
+  processed
+}
+
+enum RefundStatus {
+  initiated
+  processing
+  success
+  failed
+}
+
+// ----------------------------------------------------------------------
+// BILLING, PAYMENTS & WALLET
+// ----------------------------------------------------------------------
+
+model Payment {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String @db.ObjectId
+  invoiceId String @unique
+
+  gatewayPaymentId String?
+  gatewayOrderId   String?
+  webhookEventId   String?
+  processing       Boolean @default(false)
+
+  status PaymentStatus
+  amount Float
+
+  paidAt      DateTime?
+  failedAt    DateTime?
+  refundedAt  DateTime?
+  processedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Subscription logic
+  purpose        PaymentPurpose @default(therapy_session)
+  subscriptionId String?        @db.ObjectId
+
+  // Relations
+  user         User                   @relation(fields: [userId], references: [id])
+  subscription Subscription?          @relation(fields: [subscriptionId], references: [id])
+  bills        TreatmentSessionBill[]
+  refunds      Refund[]
+
+  @@index([userId])
+  @@index([gatewayPaymentId, status])
+  @@index([webhookEventId])
+}
+
+model Refund {
+  id              String            @id @default(auto()) @map("_id") @db.ObjectId
+  paymentId       String            @db.ObjectId
+  gatewayRefundId String?
+  amount          Float
+  reason          String
+  status          RefundStatus
+  initiatedBy     StatusChangeActor
+  createdAt       DateTime          @default(now())
+  processedAt     DateTime?
+
+  payment Payment @relation(fields: [paymentId], references: [id])
+
+  @@index([paymentId])
+}
+
+model TreatmentSessionBill {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+  paymentId String @db.ObjectId
+  sessionId String @unique @db.ObjectId
+
+  sessionDate DateTime
+  therapistId String
+  patientId   String
+
+  amountAllocated Float
+  status          BillStatus
+  releasedAt      DateTime?
+
+  // Redundant fields for easier querying and reporting
+  paymentAmountMetaData Json // Store original payment amount as string for reporting, since payments can be split or adjusted
+
+  // Relations
+  payment    Payment          @relation(fields: [paymentId], references: [id])
+  session    TreatmentSession @relation(fields: [sessionId], references: [id])
+  commission Commission?
+
+  @@index([paymentId])
+}
+
+model Commission {
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  billId      String @unique @db.ObjectId
+  therapistId String @db.ObjectId
+
+  therapistName String
+  sessionDate   DateTime
+  patientName   String
+
+  sessionAmount    Float
+  platformFee      Float
+  therapistAmount  Float
+  platformRateUsed Float
+
+  calculatedAt DateTime @default(now())
+
+  // Relations
+  bill      TreatmentSessionBill @relation(fields: [billId], references: [id])
+  therapist Therapist            @relation(fields: [therapistId], references: [id])
+
+  @@index([therapistId])
+}
+
+model TherapistWallet {
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  therapistId String @db.ObjectId
+
+  amount       Float
+  type         WalletType
+  referenceId  String? // ID of Payout or Commission
+  balanceHold  Float?
+  balanceAfter Float?
+
+  createdAt DateTime @default(now())
+
+  therapist Therapist @relation(fields: [therapistId], references: [id])
+
+  @@index([therapistId])
+}
+
+model Payout {
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  therapistId String @db.ObjectId
+
+  amount              Float
+  status              PayoutStatus
+  transactionRef      String? // utr or transaction ID from payment gateway
+  processedBy         String?
+  processedAt         DateTime?
+  requestedFromIp     String?
+  accountSnapshotJson Json? // Store account details at time of payout for record
+
+  createdAt DateTime @default(now())
+
+  therapist Therapist @relation(fields: [therapistId], references: [id])
+
+  @@unique([transactionRef])
+  @@index([therapistId])
+}
+
+model Subscription {
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  therapistId String @db.ObjectId
+
+  isActive  Boolean
+  startDate DateTime
+  endDate   DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  therapist Therapist @relation(fields: [therapistId], references: [id])
+  payments  Payment[]
+
+  @@index([therapistId])
+}

@@ -1,0 +1,28 @@
+# Booking
+- Search Physio
+- Select Physio
+- Select Time Slot
+- Hold Slot for 10 min using (Redis)
+- Select/Add patient detail
+- Select/Add patient location
+- See Preview using (Redis)
+- Pay amount + 10 min (Redis)
+- Booking Complete
+
+# Treatment LifeCycle
+- therapist confirm booking
+- therapist get notification befor 1 hrs of schedule
+- therapist generate and send OTP at arround start time (Redis)
+- therapist verify OTP and start therapy session (active)
+- therapist can reschedule Slot
+- If therapist won't come to therapy and verify the OTP after 15 min of start time then system will convert the therapy session as no show
+- therapist can cancel the slot before 1 hrs of the therapy start time
+- therapist must generate assessment report on 1st therapy session before end of the therapy session and complete it by submitting it 
+- therapist can generate more assessment report 
+- therapist can add docs like x-ray, CT scan and more by entering the image URL and title and small description.
+- after 1st therapy session from 2nd therapy session therapist will complete the therapy by submitting the improvement report after starting the session
+- patient can see more slot according to the 1st therapy session recommendation
+- after completing 1st therapy session of a therapy plan patient can book multiple session on the same therap
+- both therapist and patient can give feedback to each other on the therapy plan.
+- after 1st session if no changes happen on the therapy plan then the system will mark the plan as completed after 1 week of nothing happen.
+- therapist can complete the therapy plan by submitting the final improvement report and optional submit the actuak image image.

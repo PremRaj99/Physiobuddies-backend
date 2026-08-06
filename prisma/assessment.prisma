@@ -1,0 +1,113 @@
+enum AssessmentType {
+  ORTHO
+  POST_SURGICAL
+  SPORTS
+  NEURO
+  GERIATRIC
+  CARDIOPULMONARY
+  GENERAL
+}
+
+enum DurationOfSymptoms {
+  LESS_THAN_ONE_WEEK
+  ONE_TO_FOUR_WEEKS
+  ONE_TO_THREE_MONTHS
+  THREE_TO_SIX_MONTHS
+  GREATER_THAN_SIX_MONTHS
+}
+
+enum ROM {
+  Full
+  Mild_Restriction
+  Moderate_Restriction
+  Severe_Restriction
+}
+
+enum MuscleStrength {
+  Normal
+  Mild_Weakness
+  Moderate_Weakness
+  Severe_Weakness
+}
+
+enum FallRisk {
+  Low
+  Moderate
+  High
+}
+
+enum VisitFrequency {
+  Daily
+  Alternate_Days
+  Three_Times_Week
+  Two_Times_Week
+  Weekly
+}
+
+type MobilityDetails {
+  mobilityStatus        String?
+  assistiveDevice       String?
+  fallRisk              FallRisk?
+  functionalLimitations String[]
+}
+
+type SurgicalDetails {
+  dateOfSurgery DateTime?
+  surgeryType   String?
+}
+
+type SportsDetails {
+  sportPlayed       String?
+  mechanismOfInjury String?
+}
+
+type NeurologicalDetails {
+  cognitiveStatus String?
+  muscleTone      String?
+}
+
+type CardiopulmonaryVitals {
+  heartRateBpm      Int?
+  bloodPressureSys  Int?
+  bloodPressureDia  Int?
+  spo2Percentage    Int?
+  oxygenSupportType String?
+}
+
+// ----------------------------------------------------------------------
+// CLINICAL ASSESSMENT DOMAIN (MongoDB Composite Types & Model)
+// ----------------------------------------------------------------------
+
+model ClinicalAssessment {
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  treatmentPlanId String        @db.ObjectId
+  treatmentPlan   TreatmentPlan @relation(fields: [treatmentPlanId], references: [id], onDelete: Cascade)
+
+  // STEP 1: Core Universal Fields
+  assessmentType      AssessmentType
+  chiefComplaint      String[]
+  durationOfSymptoms  DurationOfSymptoms
+  painScore           Int
+  painCharacteristics String[]
+  rom                 ROM
+  muscleStrength      MuscleStrength
+
+  // STEP 2: Conditional & Specific Fields (Composite Types)
+  mobilityDetails       MobilityDetails
+  surgicalDetails       SurgicalDetails?
+  sportsDetails         SportsDetails?
+  neurologicalDetails   NeurologicalDetails?
+  cardiopulmonaryVitals CardiopulmonaryVitals?
+
+  // STEP 3: Treatment & Recommendations
+  problemsIdentified     String[]
+  treatmentPlanItems     String[]
+  visitFrequency         VisitFrequency
+  suggestedTreatmentDays Int?
+  hepGiven               Boolean
+  therapistNotes         String?
+  documentUrls           String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

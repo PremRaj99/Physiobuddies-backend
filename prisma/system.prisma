@@ -1,0 +1,107 @@
+enum ActivityType {
+  frequent
+  likely
+  possible
+  rare
+  unlikely
+}
+
+enum NotificationPriority {
+  low
+  medium
+  high
+}
+
+enum NotificationStatus {
+  queued
+  sent
+  delivered
+  failed
+}
+
+// ----------------------------------------------------------------------
+// SYSTEM, AUDIT & INCIDENTS
+// ----------------------------------------------------------------------
+
+model Activity {
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  userId String @db.ObjectId
+
+  title  String
+  data   String
+  before String?
+  after  String?
+  ip     String
+  type   ActivityType
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model Notification {
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  userId String @db.ObjectId
+
+  title       String
+  description String
+  isRead      Boolean
+  priority    NotificationPriority
+  status      NotificationStatus   @default(sent)
+
+  createdAt DateTime @default(now())
+  time      DateTime
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model SystemConfig {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  actorId    String   @db.ObjectId
+  actorRole  UserRole
+  action     String
+  entityName String
+  entityId   String   @db.ObjectId
+  oldValue   Json?
+  newValue   Json?
+  ipAddress  String?
+  userAgent  String?
+  reason     String
+  createdAt  DateTime @default(now())
+
+  @@index([entityName, entityId])
+  @@index([actorId])
+}
+
+model WebhookEventLog {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  invoiceId   String
+  eventId     String
+  ip          String
+  payload     Json
+  isDuplicate Boolean  @default(false)
+  receivedAt  DateTime @default(now())
+
+  @@index([invoiceId])
+}
+
+model AdminIncidentReport {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  type        String // DB_INSERT_FAILED, EXPIRED_LOCK_PAYMENT, SCHEDULE_CONFLICT
+  referenceId String
+  details     Json
+  isResolved  Boolean  @default(false)
+  resolvedBy  String?  @db.ObjectId
+  createdAt   DateTime @default(now())
+}

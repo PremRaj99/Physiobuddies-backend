@@ -1,0 +1,84 @@
+enum CouponStatus {
+  active
+  inactive
+}
+
+enum CouponUsageStatus {
+  reserved
+  consumed
+  reverted
+}
+
+enum CouponAssignmentType {
+  whitelist
+  blacklist
+}
+
+// ----------------------------------------------------------------------
+// COUPONS
+// ----------------------------------------------------------------------
+
+model Coupon {
+  id          String  @id @default(auto()) @map("_id") @db.ObjectId
+  therapistId String? @db.ObjectId // Optional: If specific to a therapist
+
+  code      String
+  discount  Float
+  minPrice  Float
+  expiresOn DateTime
+  status    CouponStatus
+  isGlobal  Boolean
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Relations
+  therapist            Therapist?         @relation(fields: [therapistId], references: [id])
+  usages               CouponUsage[]
+  assignments          CouponAssignment[]
+  therapistConstraints CouponTherapist[] // If limited to list of therapists
+
+  @@unique([code, deletedAt])
+}
+
+model CouponUsage {
+  id                 String @id @default(auto()) @map("_id") @db.ObjectId
+  couponId           String @db.ObjectId
+  patientId          String @db.ObjectId
+  treatmentSessionId String @unique @db.ObjectId
+
+  status CouponUsageStatus
+  usedAt DateTime
+
+  paymentId String?   @db.ObjectId
+  expiresAt DateTime?
+
+  // Relations
+  coupon  Coupon           @relation(fields: [couponId], references: [id])
+  patient Patient          @relation(fields: [patientId], references: [id])
+  session TreatmentSession @relation(fields: [treatmentSessionId], references: [id])
+
+  @@index([patientId])
+}
+
+model CouponAssignment {
+  id        String               @id @default(auto()) @map("_id") @db.ObjectId
+  couponId  String               @db.ObjectId
+  patientId String               @db.ObjectId
+  type      CouponAssignmentType
+
+  coupon  Coupon  @relation(fields: [couponId], references: [id])
+  patient Patient @relation(fields: [patientId], references: [id])
+}
+
+model CouponTherapist {
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  couponId    String @db.ObjectId
+  therapistId String @db.ObjectId
+
+  coupon    Coupon    @relation(fields: [couponId], references: [id])
+  // No strict relation to Therapist model needed here unless you want cascading delete, 
+  // but keeping ID is safe for flexible checking.
+  therapist Therapist @relation(fields: [therapistId], references: [id])
+}

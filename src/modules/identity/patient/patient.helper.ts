@@ -197,8 +197,12 @@ export interface FormattablePatientBooking {
   startHour: number;
   status: string;
   therapistId: string;
-  treatmentSession?: {
+  treatmentPlan?: {
     status: string;
+    sessions: {
+      date: Date | string;
+      status: string;
+    }[];
   } | null;
   therapist: {
     gender?: string | null;
@@ -212,13 +216,16 @@ export interface FormattablePatientBooking {
 
 export const formatPatientBookings = (reservations: FormattablePatientBooking[]) => {
   return reservations.map((res) => {
-    const { id, therapistId, date, startTime, startHour, status, treatmentSession, therapist } =
-      res;
+    const { id, therapistId, date, startTime, startHour, status, treatmentPlan, therapist } = res;
+
+    const treatmentPlanStatus = treatmentPlan?.sessions?.find(
+      (session) => session.status === 'confirmed',
+    )?.status;
 
     const dateStr = formatDateStr(date, 'short');
     const startHourNum = startHour ?? new Date(startTime).getHours();
     const timeStr = formatScheduledTime(startHourNum);
-    const statusFormatted = resolveBookingStatus(status, startTime, treatmentSession?.status);
+    const statusFormatted = resolveBookingStatus(status, startTime, treatmentPlanStatus);
 
     return {
       id,

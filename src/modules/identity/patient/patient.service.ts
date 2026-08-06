@@ -67,9 +67,15 @@ class PatientService {
         startHour: true,
         status: true,
         therapistId: true,
-        treatmentSession: {
+        treatmentPlan: {
           select: {
             status: true,
+            sessions: {
+              select: {
+                date: true,
+                status: true,
+              },
+            },
           },
         },
         therapist: {

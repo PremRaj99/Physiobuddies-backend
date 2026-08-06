@@ -1,0 +1,60 @@
+// ----------------------------------------------------------------------
+// CONTENT (BLOGS & REVIEWS)
+// ----------------------------------------------------------------------
+
+model Blog {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+  title     String
+  content   String
+  summary   String
+  tags      String
+  thumbnail String
+  slug      String @unique
+
+  readTime String?
+  views    Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reviews BlogReview[]
+  likes   BlogLike[]
+}
+
+model BlogReview {
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  blogId String @db.ObjectId
+  userId String @db.ObjectId // Author
+
+  comment String
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  blog   Blog @relation(fields: [blogId], references: [id])
+  author User @relation("WrittenReviews", fields: [userId], references: [id])
+}
+
+model BlogReviewLike {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  reviewId String @db.ObjectId
+  userId   String @db.ObjectId
+
+  createdAt DateTime @default(now())
+
+  @@unique([reviewId, userId])
+}
+
+model BlogLike {
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  blogId String @db.ObjectId
+  userId String @db.ObjectId
+
+  createdAt DateTime @default(now())
+
+  blog Blog @relation(fields: [blogId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([blogId])
+}

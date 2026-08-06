@@ -1,0 +1,44 @@
+// ----------------------------------------------------------------------
+// REVIEWS (THERAPY)
+// ----------------------------------------------------------------------
+
+model TherapistReview {
+  id              String @id @default(auto()) @map("_id") @db.ObjectId
+  patientId       String @db.ObjectId
+  therapistId     String @db.ObjectId
+  treatmentPlanId String @db.ObjectId
+
+  rating  Float
+  comment String
+
+  // Admin Moderation
+  isHiddenByAdmin  Boolean @default(false)
+  moderatedBy      String? @db.ObjectId
+  moderationReason String?
+
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+
+  patient   Patient   @relation("PatientGivenReviews", fields: [patientId], references: [id])
+  therapist Therapist @relation("TherapistReceivedReviews", fields: [therapistId], references: [id])
+
+  @@index([therapistId])
+  @@index([patientId])
+}
+
+model TreatmentSessionReview {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+  sessionId String @unique @db.ObjectId
+
+  reviewBy ReviewedBy
+  comment  String
+  rating   Float
+  date     DateTime
+
+  // Admin Moderation
+  isHiddenByAdmin  Boolean @default(false)
+  moderatedBy      String? @db.ObjectId
+  moderationReason String?
+
+  session TreatmentSession @relation(fields: [sessionId], references: [id])
+}

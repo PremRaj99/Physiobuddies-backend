@@ -1,0 +1,68 @@
+enum UserStatus {
+  blocked
+  deleted
+  active
+}
+
+enum UserRole {
+  patient
+  therapist
+  admin
+}
+
+// ----------------------------------------------------------------------
+// USER & AUTH DOMAIN
+// ----------------------------------------------------------------------
+
+model User {
+  id       String     @id @default(auto()) @map("_id") @db.ObjectId
+  name     String
+  email    String
+  phone    String?
+  password String
+  image    String?
+  role     UserRole
+  status   UserStatus
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // Auth Sessions
+  authSessions AuthSession[]
+
+  // Profiles (1:1 Relationships)
+  patientProfile   Patient?
+  therapistProfile Therapist?
+
+  // Financials (User pays, regardless of role)
+  payments Payment[]
+
+  // Content Interactions
+  writtenBlogReviews BlogReview[] @relation("WrittenReviews")
+  blogLikes          BlogLike[]
+
+  // System
+  activities    Activity[]
+  notifications Notification[]
+  complaint     Complaint[]
+
+  @@unique([email, deletedAt])
+  @@index([phone])
+}
+
+model AuthSession {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String    @db.ObjectId
+  agent        String
+  location     String
+  ip           String
+  refreshToken String    @unique
+  lastLoggedAt DateTime?
+  expiredAt    DateTime
+  createdAt    DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
