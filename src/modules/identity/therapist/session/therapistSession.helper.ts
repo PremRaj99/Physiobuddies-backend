@@ -15,82 +15,92 @@ export const THERAPIST_BOOKING_RESERVATION_INCLUDE = {
   },
 };
 
-export interface FormattableTherapistBooking {
+export interface FormattableTherapistTreatmentPlan {
   id: string;
-  date: Date | string;
-  startTime: Date | string;
-  startHour?: number | null;
   status: string;
-  treatmentSession?: {
-    status?: string | null;
-    treatmentPlan?: {
-      patientDetailId?: string | null;
-      patient?: {
-        patientId?: string | null;
-        details?: {
-          id: string;
-          name: string;
-          dob: Date | string;
-          gender: string;
-          phone?: string;
-        }[];
-      } | null;
-    } | null;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  patientDetailId?: string | null;
+  patient?: {
+    patientId?: string | null;
+    details?: {
+      id: string;
+      name: string;
+      dob: Date | string;
+      gender: string;
+      phone?: string;
+    }[];
   } | null;
+  sessions?: {
+    id: string;
+    date: Date | string;
+    status: string;
+    mode?: string | null;
+    reservation?: {
+      id?: string;
+      date?: Date | string;
+      startTime?: Date | string;
+      startHour?: number | null;
+      status?: string;
+    } | null;
+  }[];
 }
 
 export const formatTherapistBookings = (
-  reservations: FormattableTherapistBooking[],
+  plans: FormattableTherapistTreatmentPlan[],
   defaultMode: string,
 ) => {
   const currentYear = new Date().getFullYear();
   const formattedBookings = [];
 
-  for (let i = 0; i < reservations.length; i++) {
-    const res = reservations[i];
-    if (!res) {
+  for (let i = 0; i < plans.length; i++) {
+    const plan = plans[i];
+    if (!plan) {
       continue;
     }
-    const treatmentSession = res.treatmentSession;
-    const treatmentPlan = treatmentSession?.treatmentPlan;
-    const patient = treatmentPlan?.patient;
-    const patientDetailId = treatmentPlan?.patientDetailId;
+
+    const patient = plan.patient;
+    const patientDetailId = plan.patientDetailId;
     const details = patient?.details;
 
-    if (!details || !patientDetailId) {
+    if (!details || details.length === 0) {
       continue;
     }
 
-    const patientDetail = details.find((detail) => detail.id === patientDetailId);
+    const patientDetail = patientDetailId
+      ? details.find((detail) => detail.id === patientDetailId) || details[0]
+      : details[0];
     if (!patientDetail) {
       continue;
     }
+
+    const latestSession = plan.sessions && plan.sessions.length > 0 ? plan.sessions[0] : null;
 
     const dob = patientDetail.dob;
     const dobYear =
       dob instanceof Date ? dob.getFullYear() : dob ? new Date(dob).getFullYear() : null;
     const age = dobYear !== null && !isNaN(dobYear) ? currentYear - dobYear : null;
 
-    const dateStr = formatDateStr(res.date);
+    const date =
+      latestSession?.reservation?.startTime ||
+      latestSession?.date ||
+      plan.updatedAt ||
+      plan.createdAt;
     const startHourNum =
-      res.startHour ||
-      (res.startTime instanceof Date
-        ? res.startTime.getHours()
-        : new Date(res.startTime).getHours());
+      latestSession?.reservation?.startHour ??
+      (date instanceof Date ? date.getHours() : new Date(date).getHours());
+
+    const dateStr = formatDateStr(date);
     const timeStr = formatScheduledTime(startHourNum);
-    const statusFormatted = resolveBookingStatus(
-      res.status,
-      res.startTime,
-      treatmentSession?.status,
-    );
+    const statusFormatted = resolveBookingStatus(plan.status, date, latestSession?.status);
 
     formattedBookings.push({
-      id: res.id,
+      id: plan.id,
       patientID: patient?.patientId ?? '',
       patientName: patientDetail.name,
-      patientGender: patientDetail.gender.toUpperCase() as 'MALE' | 'FEMALE' | 'OTHER',
+      patientGender: (patientDetail.gender.toUpperCase() as 'MALE' | 'FEMALE' | 'OTHER') || 'MALE',
       patientAge: age,
-      treatmentMode: defaultMode,
+      treatmentMode: latestSession?.mode || defaultMode,
       status: statusFormatted,
       lastSessionDate: dateStr,
       lastSessionTime: timeStr,
@@ -100,105 +110,84 @@ export const formatTherapistBookings = (
   return formattedBookings;
 };
 
-export interface FormattableDetailSessionReservation {
-  startHour?: number | null;
-  startTime?: Date | string | null;
-  endTime?: Date | string | null;
-  date?: Date | string | null;
-}
-
-export interface FormattableDetailSession {
-  id: string;
-  date: Date | string;
-  status: string;
-  actualStartTime?: Date | string | null;
-  actualEndTime?: Date | string | null;
-  reservation?: FormattableDetailSessionReservation | null;
-  improvementRecord?: unknown;
-}
-
-export interface FormattableDetailPatientDetail {
-  id: string;
-  name: string;
-  dob: Date | string;
-  gender: string;
-}
-
-export interface FormattableDetailPatientLocation {
-  id: string;
-  address: string;
-  landmark?: string | null;
-  city: string;
-  state: string;
-  country?: string | null;
-  postalCode: string;
-  location?: unknown;
-}
-
-export interface FormattableDetailPatient {
-  patientId: string;
-  details?: FormattableDetailPatientDetail[];
-  locations?: FormattableDetailPatientLocation[];
-}
-
-export interface FormattableDetailTreatmentPlan {
+export interface FormattableTherapistPlanDetail {
   id: string;
   status: string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
   patientDetailId?: string | null;
   locationId?: string | null;
-  patient?: FormattableDetailPatient | null;
-  sessions?: FormattableDetailSession[];
+  therapistId: string;
+  therapist?: {
+    mode: string;
+  } | null;
+  patient?: {
+    patientId: string;
+    details?: {
+      id: string;
+      name: string;
+      dob: Date | string;
+      gender: string;
+    }[];
+    locations?: {
+      id: string;
+      address: string;
+      landmark?: string | null;
+      city: string;
+      state: string;
+      country?: string | null;
+      postalCode: string;
+      location?: unknown;
+    }[];
+  } | null;
+  sessions?: {
+    id: string;
+    date: Date | string;
+    status: string;
+    mode?: string | null;
+    condition?: string | null;
+    DescribedAs?: string | null;
+    actualStartTime?: Date | string | null;
+    actualEndTime?: Date | string | null;
+    reservation?: {
+      startHour?: number | null;
+      startTime?: Date | string | null;
+      endTime?: Date | string | null;
+      date?: Date | string | null;
+    } | null;
+    improvementRecord?: unknown;
+  }[];
   clinicalAssessments?: unknown[];
   docRecords?: unknown[];
 }
 
-export interface FormattableTherapistTreatmentSession {
-  condition?: string | null;
-  DescribedAs?: string | null;
-  treatmentPlan?: FormattableDetailTreatmentPlan | null;
-}
+export const formatTherapistBookingDetail = (plan: FormattableTherapistPlanDetail) => {
+  const treatmentSessions = plan.sessions;
 
-export interface FormattableTherapistBookingDetailReservation {
-  therapistId: string;
-  therapist: {
-    mode: string;
-  };
-  treatmentSession?: FormattableTherapistTreatmentSession | null;
-}
-
-export const formatTherapistBookingDetail = (res: FormattableTherapistBookingDetailReservation) => {
-  const treatmentPlan = res.treatmentSession?.treatmentPlan;
-  const treatmentSessions = treatmentPlan?.sessions;
-  if (!treatmentSessions || treatmentSessions.length === 0) {
-    throw new NotFoundError('Treatment Sessions not found');
-  }
-
-  const patient = treatmentPlan?.patient;
+  const patient = plan.patient;
   const details = patient?.details;
   const locations = patient?.locations;
 
-  const patientDetail = details?.find((d) => d.id === treatmentPlan?.patientDetailId);
+  const patientDetail = details?.find((d) => d.id === plan.patientDetailId) || details?.[0];
   if (!patientDetail) {
     throw new NotFoundError('Patient Detail not found');
   }
 
-  const patientLocation = locations?.find((l) => l.id === treatmentPlan?.locationId);
-  if (!patientLocation) {
-    throw new NotFoundError('Patient Location not found');
-  }
+  const patientLocation = locations?.find((l) => l.id === plan.locationId) || locations?.[0];
 
-  const latestSession = treatmentSessions[treatmentSessions.length - 1];
-  if (!latestSession) {
-    throw new NotFoundError('Latest Session not found');
-  }
+  const latestSession =
+    treatmentSessions && treatmentSessions.length > 0 ? treatmentSessions[0] : null;
+
+  const date =
+    latestSession?.reservation?.startTime ||
+    latestSession?.date ||
+    plan.updatedAt ||
+    plan.createdAt;
 
   const dobStr = patientDetail.dob ? formatDateStr(patientDetail.dob) : '';
-  const statusFormatted = resolveBookingStatus(
-    treatmentPlan?.status || 'BOOKED',
-    latestSession.reservation?.startTime || latestSession.date || new Date(),
-  );
+  const statusFormatted = resolveBookingStatus(plan.status, date, latestSession?.status);
 
-  const sessions = treatmentSessions.map((session) => {
+  const sessions = (treatmentSessions || []).map((session) => {
     const reservationStartHour =
       session.reservation?.startHour ??
       (session.reservation?.startTime
@@ -222,8 +211,8 @@ export const formatTherapistBookingDetail = (res: FormattableTherapistBookingDet
   const improvementRecords = buildImprovementRecords(treatmentSessions);
 
   return {
-    id: treatmentPlan?.id || '',
-    mode: res.therapist.mode,
+    id: plan.id,
+    mode: latestSession?.mode || plan.therapist?.mode || 'home_visit',
     overallStatus: statusFormatted,
     patient: {
       id: patient?.patientId || '',
@@ -232,20 +221,19 @@ export const formatTherapistBookingDetail = (res: FormattableTherapistBookingDet
       gender: (patientDetail.gender.toUpperCase() as 'MALE' | 'FEMALE' | 'OTHER') || 'MALE',
     },
     condition: {
-      title: res.treatmentSession?.condition || 'Physical Therapy Session',
+      title: latestSession?.condition || 'Physical Therapy Session',
     },
-    problemDescription:
-      res.treatmentSession?.DescribedAs || 'Scheduled therapy session with patient.',
+    problemDescription: latestSession?.DescribedAs || 'Scheduled therapy session with patient.',
     location: {
-      address: patientLocation.address || '',
-      landmark: patientLocation.landmark || '',
-      city: patientLocation.city || '',
-      state: patientLocation.state || '',
-      postalCode: patientLocation.postalCode || '',
+      address: patientLocation?.address || '',
+      landmark: patientLocation?.landmark || '',
+      city: patientLocation?.city || '',
+      state: patientLocation?.state || '',
+      postalCode: patientLocation?.postalCode || '',
     },
     sessions,
-    documents: treatmentPlan?.docRecords || [],
-    clinicalAssessments: treatmentPlan?.clinicalAssessments || [],
+    documents: plan.docRecords || [],
+    clinicalAssessments: plan.clinicalAssessments || [],
     improvementRecords,
   };
 };

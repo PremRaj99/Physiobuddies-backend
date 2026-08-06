@@ -15,45 +15,53 @@ class TherapistSessionService {
       return [];
     }
 
-    const reservations = await prisma.slotReservation.findMany({
-      where: softDeleteWhereClause({
+    const plans = await prisma.treatmentPlan.findMany({
+      where: {
         therapistId: therapist.id,
-      }),
+      },
       select: {
         id: true,
-        date: true,
-        startTime: true,
-        startHour: true,
         status: true,
-        treatmentSession: {
+        createdAt: true,
+        updatedAt: true,
+        patientDetailId: true,
+        patient: {
           select: {
-            status: true,
-            treatmentPlan: {
+            patientId: true,
+            details: {
+              where: softDeleteWhereClause(),
               select: {
-                patientDetailId: true,
-                patient: {
-                  select: {
-                    patientId: true,
-                    details: {
-                      where: softDeleteWhereClause(),
-                      select: {
-                        id: true,
-                        name: true,
-                        dob: true,
-                        gender: true,
-                      },
-                    },
-                  },
-                },
+                id: true,
+                name: true,
+                dob: true,
+                gender: true,
               },
             },
           },
         },
+        sessions: {
+          select: {
+            id: true,
+            date: true,
+            status: true,
+            mode: true,
+            reservation: {
+              select: {
+                id: true,
+                date: true,
+                startTime: true,
+                startHour: true,
+                status: true,
+              },
+            },
+          },
+          orderBy: { date: 'desc' },
+        },
       },
-      orderBy: { startTime: 'desc' },
+      orderBy: { updatedAt: 'desc' },
     });
 
-    return formatTherapistBookings(reservations, therapist.mode);
+    return formatTherapistBookings(plans, therapist.mode);
   }
 
   async getTodaySessions(therapistId: string) {
@@ -98,90 +106,98 @@ class TherapistSessionService {
   }
 
   async getBookingById(userId: string, bookingId: string) {
-    const res = await prisma.slotReservation.findFirst({
-      where: softDeleteWhereClause({
-        id: bookingId,
-        therapist: softDeleteWhereClause({ userId }),
-      }),
+    const therapist = await prisma.therapist.findUnique({
+      where: { userId },
+      select: { id: true, mode: true },
+    });
+
+    if (!therapist) {
+      throw new NotFoundError('Therapist not found');
+    }
+
+    const plan = await prisma.treatmentPlan.findFirst({
+      where: {
+        OR: [
+          { id: bookingId },
+          { sessions: { some: { id: bookingId } } },
+          { slotReservations: { some: { id: bookingId } } },
+        ],
+        therapistId: therapist.id,
+      },
       select: {
+        id: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        patientDetailId: true,
+        locationId: true,
         therapistId: true,
         therapist: {
           select: {
             mode: true,
           },
         },
-        treatmentSession: {
+        patient: {
           select: {
-            condition: true,
-            DescribedAs: true,
-            treatmentPlan: {
+            patientId: true,
+            details: {
+              where: softDeleteWhereClause(),
               select: {
                 id: true,
-                patientDetailId: true,
-                locationId: true,
-                status: true,
-                patient: {
-                  select: {
-                    patientId: true,
-                    details: {
-                      where: softDeleteWhereClause(),
-                      select: {
-                        id: true,
-                        name: true,
-                        dob: true,
-                        gender: true,
-                      },
-                    },
-                    locations: {
-                      where: softDeleteWhereClause(),
-                      select: {
-                        id: true,
-                        landmark: true,
-                        address: true,
-                        city: true,
-                        state: true,
-                        country: true,
-                        postalCode: true,
-                        location: true,
-                      },
-                    },
-                  },
-                },
-                sessions: {
-                  select: {
-                    id: true,
-                    date: true,
-                    actualStartTime: true,
-                    actualEndTime: true,
-                    status: true,
-                    reservation: {
-                      select: {
-                        startHour: true,
-                        endTime: true,
-                        startTime: true,
-                        date: true,
-                      },
-                    },
-                    improvementRecord: true,
-                  },
-                  orderBy: {
-                    date: 'asc',
-                  },
-                },
-                clinicalAssessments: true,
-                docRecords: true,
+                name: true,
+                dob: true,
+                gender: true,
+              },
+            },
+            locations: {
+              where: softDeleteWhereClause(),
+              select: {
+                id: true,
+                landmark: true,
+                address: true,
+                city: true,
+                state: true,
+                country: true,
+                postalCode: true,
+                location: true,
               },
             },
           },
         },
+        sessions: {
+          select: {
+            id: true,
+            date: true,
+            actualStartTime: true,
+            actualEndTime: true,
+            status: true,
+            mode: true,
+            condition: true,
+            DescribedAs: true,
+            reservation: {
+              select: {
+                startHour: true,
+                endTime: true,
+                startTime: true,
+                date: true,
+              },
+            },
+            improvementRecord: true,
+          },
+          orderBy: {
+            date: 'desc',
+          },
+        },
+        clinicalAssessments: true,
+        docRecords: true,
       },
     });
 
-    if (!res) {
+    if (!plan) {
       throw new NotFoundError('Booking not found');
     }
 
-    return formatTherapistBookingDetail(res);
+    return formatTherapistBookingDetail(plan);
   }
 
   async acceptBooking(userId: string, bookingId: string) {
