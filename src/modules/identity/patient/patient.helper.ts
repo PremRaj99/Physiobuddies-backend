@@ -395,16 +395,24 @@ export const formatPatientBookingDetail = (
     },
     sessions,
     documents:
-      plan.docRecords?.map((document) => ({
-        id: document.id,
-        name: document.name,
-        fileType: document.fileType,
-        url: document.url,
-        createdAt:
-          document.createdAt instanceof Date
-            ? document.createdAt.toISOString()
-            : new Date(document.createdAt).toISOString(),
-      })) || [],
+      plan.docRecords?.map((document) => {
+        const dateObj =
+          document.createdAt instanceof Date ? document.createdAt : new Date(document.createdAt);
+        return {
+          id: document.id,
+          title: document.name,
+          name: document.name,
+          type: document.fileType || 'Document',
+          fileType: document.fileType,
+          url: document.url,
+          date: dateObj.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+          }),
+          createdAt: dateObj.toISOString(),
+        };
+      }) || [],
     clinicalAssessments: plan.clinicalAssessments || [],
     improvementRecords,
   };

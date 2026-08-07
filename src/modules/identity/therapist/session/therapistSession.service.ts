@@ -188,8 +188,16 @@ class TherapistSessionService {
             date: 'desc',
           },
         },
-        clinicalAssessments: true,
-        docRecords: true,
+        clinicalAssessments: {
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
+        docRecords: {
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
       },
     });
 
