@@ -77,7 +77,9 @@ class TherapistController {
 
   async getTherapistAvailability(req: Request, res: Response, _next: NextFunction) {
     const therapistId = validateSchema(ObjectIdSchema, req.params.id);
-    const availability = await therapistService.getTherapistAvailability(therapistId);
+    const daysParam = req.query.days ? Number(req.query.days) : 3;
+    const days = !isNaN(daysParam) && daysParam > 0 ? daysParam : 3;
+    const availability = await therapistService.getTherapistAvailability(therapistId, days);
 
     return new OkResponse(availability).send(res);
   }

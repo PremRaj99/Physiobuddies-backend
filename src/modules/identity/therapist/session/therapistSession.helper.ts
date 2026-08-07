@@ -212,6 +212,10 @@ export const formatTherapistBookingDetail = (plan: FormattableTherapistPlanDetai
 
   return {
     id: plan.id,
+    therapistId: plan.therapistId,
+    therapist: {
+      id: plan.therapistId,
+    },
     mode: latestSession?.mode || plan.therapist?.mode || 'home_visit',
     overallStatus: statusFormatted,
     patient: {

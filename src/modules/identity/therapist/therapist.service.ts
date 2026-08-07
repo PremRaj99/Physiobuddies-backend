@@ -4,6 +4,7 @@ import {
   getSlotsForSchedule,
   MIN_BOOKING_LEAD_MINUTES,
   SLOT_DURATION,
+  WeekdayScheduleType,
 } from '@/core/constants/slots';
 import { NotFoundError } from '@/core/errors/ApiError';
 import { getSlotStartDateTime } from '@/core/utils/time-zone';
@@ -195,16 +196,20 @@ class TherapistService {
     }));
   };
 
-  getTherapistAvailability = async (therapistId: string) => {
+  getTherapistAvailability = async (therapistId: string, daysCount = 3) => {
     const now = new Date();
 
-    // 1. Setup Time Range (3 days from UTC midnight today)
-    const todayStart = new Date(now);
-    todayStart.setUTCHours(0, 0, 0, 0);
-    const threeDaysEnd = addDays(todayStart, 3);
+    // 1. Setup Time Range (consecutive days starting from today in IST +05:30)
+    const todayISTStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); // YYYY-MM-DD
+    const todayStart = new Date(`${todayISTStr}T00:00:00+05:30`);
+    const rangeEnd = addDays(todayStart, daysCount);
 
-    // Construct slot hold keys for all 16 slots of the 3 days to keep queries parallel
-    const { slotKeys, keyToSlotMap } = SlotManager.getSlotHoldKeys(therapistId, todayStart, 3);
+    // Construct slot hold keys for all slots of the requested days
+    const { slotKeys, keyToSlotMap } = SlotManager.getSlotHoldKeys(
+      therapistId,
+      todayStart,
+      daysCount,
+    );
 
     // 2. Parallel Fetch
     const [therapistSlot, reservations, leaves, redisHolds] = await Promise.all([
@@ -212,22 +217,31 @@ class TherapistService {
       prisma.slotReservation.findMany({
         where: softDeleteWhereClause({
           therapistId,
-          date: { gte: todayStart, lte: threeDaysEnd },
+          date: { gte: todayStart, lte: rangeEnd },
         }),
       }),
       prisma.therapistLeave.findMany({
         where: {
           therapistId,
-          startDate: { lte: threeDaysEnd },
+          startDate: { lte: rangeEnd },
           endDate: { gte: todayStart },
         },
       }),
       redisClient.mGet(slotKeys),
     ]);
 
-    if (!therapistSlot) return [];
+    const defaultSchedule: Record<string, string[]> = {
+      sunday: ['morning', 'evening', 'night'],
+      monday: ['morning', 'evening', 'night'],
+      tuesday: ['morning', 'evening', 'night'],
+      wednesday: ['morning', 'evening', 'night'],
+      thursday: ['morning', 'evening', 'night'],
+      friday: ['morning', 'evening', 'night'],
+      saturday: ['morning', 'evening', 'night'],
+    };
 
-    const schedule = therapistSlot.schedule as Record<string, string[]>;
+    const schedule =
+      (therapistSlot?.schedule as Record<string, WeekdayScheduleType>) || defaultSchedule;
 
     const heldSlotsMap = new Map<string, string>(); // Key: "YYYY-MM-DD_startHour" -> reservationId
     slotKeys.forEach((key, index) => {
@@ -250,52 +264,45 @@ class TherapistService {
 
     const result = [];
 
-    for (let i = 0; i < 3; i++) {
-      const currentDay = addDays(todayStart, i);
-      const dateKey = currentDay.toISOString().split('T')[0]; // YYYY-MM-DD
-
-      if (!dateKey) break;
+    for (let i = 0; i < daysCount; i++) {
+      const currentDay = new Date(todayStart.getTime() + i * 24 * 60 * 60 * 1000);
+      const dateKey = currentDay.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); // YYYY-MM-DD
 
       // Formatting for output "DD-MM-YYYY"
       const [year, month, day] = dateKey.split('-');
       const formattedDate = `${day}-${month}-${year}`;
 
-      const WEEKDAYS = [
-        'sunday',
-        'monday',
-        'tuesday',
-        'wednesday',
-        'thursday',
-        'friday',
-        'saturday',
-      ];
-      const weekday = WEEKDAYS[currentDay.getUTCDay()] as string;
+      const weekday = currentDay
+        .toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', weekday: 'long' })
+        .toLowerCase();
 
-      // Check Leave: Compare UTC dates directly
-      const isDayOnLeave = leaves.some(
-        (leave) => currentDay >= leave.startDate && currentDay <= leave.endDate,
-      );
+      // Check Leave
+      const isDayOnLeave = leaves.some((leave) => {
+        const leaveStart = new Date(leave.startDate).getTime();
+        const leaveEnd = new Date(leave.endDate).getTime();
+        const dayStart = currentDay.getTime();
+        const dayEnd = dayStart + 24 * 60 * 60 * 1000 - 1;
+        return dayEnd >= leaveStart && dayStart <= leaveEnd;
+      });
 
-      if (isDayOnLeave) continue;
-
-      // Get available slots for this weekday based on therapist's schedule
-      const availableSlots = getSlotsForSchedule(schedule, weekday);
-      if (availableSlots.length === 0) continue;
+      const availableSlots = isDayOnLeave ? [] : getSlotsForSchedule(schedule, weekday);
 
       const daySlots = [];
 
       for (const slotDef of availableSlots) {
         const slotDateTime = getSlotStartDateTime(dateKey, slotDef.startHour);
 
-        // Skip if slot has passed or is less than 1 hour (60 minutes) in advance
+        // Determine status
         const leadTimeMs = slotDateTime.getTime() - now.getTime();
-        if (leadTimeMs < MIN_BOOKING_LEAD_MINUTES * 60 * 1000) continue;
+        let status = 'open';
 
-        // 3. Determine Status from reservation map or Redis holds
+        if (leadTimeMs < MIN_BOOKING_LEAD_MINUTES * 60 * 1000) {
+          status = 'blocked';
+        }
+
         const reservation = reservationMap.get(`${dateKey}_${slotDef.startHour}`);
         const redisHoldValue = heldSlotsMap.get(`${dateKey}_${slotDef.startHour}`);
 
-        let status = 'open';
         if (reservation) {
           status = reservation.status.toLowerCase();
         } else if (redisHoldValue) {
@@ -311,12 +318,10 @@ class TherapistService {
         });
       }
 
-      if (daySlots.length > 0) {
-        result.push({
-          date: formattedDate,
-          timeSlots: daySlots,
-        });
-      }
+      result.push({
+        date: formattedDate,
+        timeSlots: daySlots,
+      });
     }
 
     return result;
