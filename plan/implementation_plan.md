@@ -12,6 +12,7 @@
 This implementation plan details the engineering architecture required to build the production-grade Booking & Treatment Lifecycle Engine in the `api2` backend repository.
 
 Key Technical Architecture:
+
 1. **Two-Phase Redis Slot Lock Engine**:
    - Lock payload JSON with `bookingId`, `patientId`, `phase`, `createdAt`, `previewId`.
    - Redis server time as absolute single source of truth (`TIME`).
@@ -120,15 +121,15 @@ model AdminIncidentReport {
 
 ### 3.2 Enum Updates (`treatment.prisma` & `payment.prisma`)
 
-* **`SessionStatus`**:
+- **`SessionStatus`**:
   `pending` | `confirmed` | `active` | `completed` | `settled` | `cancelled` | `patient_no_show` | `therapist_no_show` | `expired`
-* **`TreatmentPlanStatus`**:
+- **`TreatmentPlanStatus`**:
   `treatment_planned` | `ongoing` | `completed` | `cancelled` | `abandoned`
-* **`PaymentStatus`**:
+- **`PaymentStatus`**:
   `created` | `pending` | `authorized` | `captured` | `failed` | `expired` | `refunded`
-* **`RefundStatus`**:
+- **`RefundStatus`**:
   `initiated` | `processing` | `success` | `failed`
-* **`NotificationStatus`**:
+- **`NotificationStatus`**:
   `queued` | `sent` | `delivered` | `failed`
 
 ---
@@ -136,19 +137,21 @@ model AdminIncidentReport {
 ## 4. Detailed Implementation Modules
 
 ### Module 1: Two-Phase Redis Slot Lock Engine (`slotHold.redis.ts`)
-* **`acquireSlotLock(therapistId, dateStr, startHour, patientId, bookingId)`**:
+
+- **`acquireSlotLock(therapistId, dateStr, startHour, patientId, bookingId)`**:
   - Key: `slot:hold:${therapistId}:${dateStr}:${startHour}`
   - Check existing key: If key exists and `existingData.patientId === patientId`, **reuse lock** and return `true`.
   - Otherwise, run `redis.set(key, JSON.stringify({ bookingId, patientId, phase: 1, createdAt: redisTime }), 'NX', 'EX', 600)`.
-* **`extendSlotLock(therapistId, dateStr, startHour, patientId, previewId)`**:
+- **`extendSlotLock(therapistId, dateStr, startHour, patientId, previewId)`**:
   - Check lock data matches `patientId`.
   - Update payload with `phase: 2`, `previewId`.
   - Execute `redis.expire(key, 600)`. Resets lock for **additional 10 minutes** for payment.
-* **OTP Attempt Management (`session:otp:${sessionId}`)**:
+- **OTP Attempt Management (`session:otp:${sessionId}`)**:
   - Store `{ otpCode, attempts: number }`.
   - Increment `attempts` on failed verification. On `attempts >= 5`, lock OTP verification for 15 minutes and invalidate current OTP.
 
 ### Module 2: Resilient Webhook & Fail-Safe Pipeline (`reservation.service.ts`)
+
 1. Receive Payment Webhook:
    - Check `WebhookEventLog` for `invoiceId`. If found, log duplicate and return `200 OK` (`status: "already_processed"`).
 2. Verify Redis Lock `slot:hold:...`:
@@ -159,6 +162,7 @@ model AdminIncidentReport {
    - If 3 retries fail: Call `createAdminIncidentReport("DB_INSERT_FAILED", invoiceId)` and queue automated refund.
 
 ### Module 3: Session Governance & Reschedule Limits (`session.service.ts`)
+
 1. **Reschedule Enforcement**:
    - Check `session.rescheduleLogs.filter(log => log.changedBy === role).length < 2`.
    - If count >= 2, throw `400 Bad Request: Maximum 2 reschedules allowed per role`.
@@ -170,14 +174,16 @@ model AdminIncidentReport {
    - Background cron `noShow.cron.ts` runs 15 minutes past start time without OTP verification -> Sets `therapist_no_show` and queues full refund.
 
 ### Module 4: Admin Overrides & Audit Logging (`adminOverride.service.ts`)
-* Implements `reopenSession()`, `regenerateOTP()`, `forceCompletePlan()`, and `moderateReview()`.
-* Automatically writes to `AuditLog` table with `actorId`, `action`, `oldValue`, `newValue`, `reason`, and `ipAddress`.
+
+- Implements `reopenSession()`, `regenerateOTP()`, `forceCompletePlan()`, and `moderateReview()`.
+- Automatically writes to `AuditLog` table with `actorId`, `action`, `oldValue`, `newValue`, `reason`, and `ipAddress`.
 
 ---
 
 ## 5. Verification Plan
 
 ### Automated Build & Validation
+
 ```bash
 # 1. Format Prisma schema files
 npm run prisma:format
@@ -190,6 +196,7 @@ npm run build
 ```
 
 ### Manual & API Verification Scenarios
+
 1. **Multi-Tab Lock Reuse**:
    - Lock slot in Tab 1 (`patient_123`), send same lock request from Tab 2 (`patient_123`). Verify lock is reused and returns 200 OK.
 2. **Expired Lock Webhook Auto-Refund**:
